@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# loppy — mechanics helper for the Loppy Claude Code plugin.
+# Pure bash. No LLM dependency.
+set -euo pipefail
+
+loppy_config_path() {
+  echo "${XDG_CONFIG_HOME:-$HOME/.config}/loppy/config.json"
+}
+
+cmd_config() {
+  local path; path="$(loppy_config_path)"
+  if [[ ! -f "$path" ]]; then
+    echo "loppy: config not found. Run setup.sh first." >&2
+    return 1
+  fi
+  if [[ $# -eq 0 ]]; then
+    jq . "$path" 2>/dev/null || { echo "loppy: malformed config JSON at $path" >&2; return 1; }
+  else
+    local key="$1"
+    local value
+    value="$(jq -er --arg k "$key" '.[$k]' "$path" 2>/dev/null)" || {
+      echo "loppy: config key not found: $key" >&2
+      return 1
+    }
+    echo "$value"
+  fi
+}
+
+usage() {
+  cat <<'EOF'
+loppy — mechanics helper for the Loppy plugin.
+
+Usage:
+  loppy config [key]              Print config JSON or a single value.
+
+EOF
+}
+
+main() {
+  local sub="${1:-}"
+  if [[ -z "$sub" || "$sub" == "--help" || "$sub" == "-h" ]]; then
+    usage; return 0
+  fi
+  shift || true
+  case "$sub" in
+    config) cmd_config "$@" ;;
+    *) echo "loppy: unknown subcommand: $sub" >&2; usage >&2; return 1 ;;
+  esac
+}
+
+main "$@"
