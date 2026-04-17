@@ -26,12 +26,23 @@ cmd_config() {
   fi
 }
 
+cmd_next() {
+  local n="${1:-}"
+  local sources_dir; sources_dir="$(cmd_config sources_dir)"
+  if [[ -z "$n" ]]; then
+    n="$(cmd_config batch_size)"
+  fi
+  find "$sources_dir" -maxdepth 1 -type f \( -name '*.md' -o -name '*.txt' \) 2>/dev/null \
+    | sort | head -n "$n"
+}
+
 usage() {
   cat <<'EOF'
 loppy — mechanics helper for the Loppy plugin.
 
 Usage:
   loppy config [key]              Print config JSON or a single value.
+  loppy next [N]                  List up to N unprocessed source files.
 
 EOF
 }
@@ -44,6 +55,7 @@ main() {
   shift || true
   case "$sub" in
     config) cmd_config "$@" ;;
+    next) cmd_next "$@" ;;
     *) echo "loppy: unknown subcommand: $sub" >&2; usage >&2; return 1 ;;
   esac
 }
