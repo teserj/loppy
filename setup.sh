@@ -82,6 +82,26 @@ else
 fi
 echo
 
+# Install loppy binary
+echo "Installing loppy binary..."
+BIN_DIR="${HOME}/.local/bin"
+mkdir -p "$BIN_DIR"
+
+if [[ -f "$SCRIPT_DIR/bin/loppy" ]]; then
+  cp "$SCRIPT_DIR/bin/loppy" "$BIN_DIR/loppy"
+  chmod +x "$BIN_DIR/loppy"
+  echo "Binary installed: $BIN_DIR/loppy"
+
+  # Check if ~/.local/bin is in PATH
+  if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+    echo -e "${BLUE}Note: Add to your shell profile to use 'loppy' command:${NC}"
+    echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+  fi
+else
+  echo -e "${RED}Warning: bin/loppy not found${NC}"
+fi
+echo
+
 # Initialize git if needed
 if [[ ! -d "$VAULT_DIR/.git" ]]; then
   read -p "Initialize git repository in vault? (y/n): " INIT_GIT
@@ -100,9 +120,11 @@ echo "Vault: $VAULT_DIR"
 echo "Sources: $SOURCES_DIR"
 echo "Wiki: $WIKI_DIR"
 echo "Config: $CONFIG_FILE"
+echo "Binary: $BIN_DIR/loppy"
 echo
 echo "Next steps:"
-echo "1. Place raw source files in: $VAULT_DIR/$SOURCES_DIR/"
-echo "2. Run: loppy next 1"
-echo "3. Run: loppy query <search-term>"
+echo "1. (If needed) Add to shell profile: export PATH=\"\$HOME/.local/bin:\$PATH\""
+echo "2. Place raw source files in: $VAULT_DIR/$SOURCES_DIR/"
+echo "3. Run: loppy next 1"
+echo "4. Run: loppy query <search-term>"
 echo

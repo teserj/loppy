@@ -175,3 +175,24 @@ EOF
   # jq will error if JSON is invalid
   jq . "$config" > /dev/null
 }
+
+@test "setup: installs binary to ~/.local/bin" {
+  vault="$TEST_TMP/vault"
+  mkdir -p "$vault"
+  bin_dir="$TEST_TMP/.local/bin"
+  mkdir -p "$bin_dir"
+
+  # Override HOME to use test bin directory
+  export HOME="$TEST_TMP"
+
+  bash "$PLUGIN_ROOT/setup.sh" <<EOF
+$vault
+source
+wiki
+n
+EOF
+
+  # Check binary installed
+  [[ -f "$bin_dir/loppy" ]]
+  [[ -x "$bin_dir/loppy" ]]
+}
