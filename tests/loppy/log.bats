@@ -59,3 +59,29 @@ teardown() { cleanup_env; }
   grep -q "line 2" "$WIKI_DIR/log.md"
   grep -q "line 3" "$WIKI_DIR/log.md"
 }
+
+@test "log appends entry and creates separator when log.md has no trailing separator" {
+  # Write a log file that has the H1 but no trailing --- separator
+  cat > "$WIKI_DIR/log.md" <<'EOF'
+---
+type: log
+title: Wiki Activity Log
+---
+
+# Wiki Log
+
+Append-only. New entries at top.
+EOF
+  run bash -c "echo 'no-sep body' | '$LOPPY_BIN' log ingest 'no-sep-title'"
+  [ "$status" -eq 0 ]
+  grep -q "^## \[2026-04-17\] ingest | no-sep-title" "$WIKI_DIR/log.md"
+  grep -q "no-sep body" "$WIKI_DIR/log.md"
+  grep -q "^---" "$WIKI_DIR/log.md"
+}
+
+@test "log fails with error when log.md is missing" {
+  rm -f "$WIKI_DIR/log.md"
+  run bash -c "echo x | '$LOPPY_BIN' log ingest 'missing'"
+  [ "$status" -ne 0 ]
+  echo "$output" | grep -q "not found"
+}

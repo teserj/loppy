@@ -199,7 +199,8 @@ cmd_log() {
   local today="${LOPPY_TODAY:-$(date +%Y-%m-%d)}"
   local body; body="$(cat)"   # slurp stdin
 
-  local tmpdir; tmpdir="$(mktemp -d)"
+  local tmpdir; tmpdir="$(mktemp -d "$wiki_dir/.tmpXXXXXX")"
+  trap "rm -rf '$tmpdir'" EXIT
   local out="$tmpdir/log.md.new"
 
   # Split log into "header" (everything up to and including the first "---" separator
@@ -225,7 +226,6 @@ cmd_log() {
   fi
 
   mv "$out" "$logf"
-  rm -rf "$tmpdir"
 }
 
 usage() {
