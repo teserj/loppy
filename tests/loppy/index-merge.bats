@@ -56,7 +56,10 @@ teardown() { cleanup_env; }
   cp "$PLUGIN_ROOT/tests/fixtures/index-merge/empty-before.md" "$WIKI_DIR/index.md"
   run bash -c "echo '[]' | '$LOPPY_BIN' index-merge"
   [ "$status" -eq 0 ]
-  # No leftover .tmp files
-  run find "$WIKI_DIR" -name "index.md.*"
+  # No leftover tmp dirs or tmp/partial files under WIKI_DIR
+  run find "$WIKI_DIR" -maxdepth 1 \( -name '.tmp*' -o -name 'index.md.*' \)
   [ -z "$output" ]
+  # Exactly one index.md with no suffix exists
+  run find "$WIKI_DIR" -maxdepth 1 -name 'index.md' -type f
+  [ "$(echo "$output" | wc -l)" -eq 1 ]
 }

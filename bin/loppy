@@ -73,20 +73,14 @@ topics|## Topics
 EOF
 }
 
-# Derive namespace from a wiki-relative path like "wiki/concepts/foo.md".
-_namespace_of() {
-  local p="$1"
-  p="${p#wiki/}"
-  echo "${p%%/*}"
-}
-
 cmd_index_merge() {
   local wiki_dir; wiki_dir="$(cmd_config wiki_dir)"
   local idx="$wiki_dir/index.md"
   [[ -f "$idx" ]] || { echo "loppy index-merge: $idx not found" >&2; return 1; }
 
   local today="${LOPPY_TODAY:-$(date +%Y-%m-%d)}"
-  local tmpdir; tmpdir="$(mktemp -d)"
+  local tmpdir; tmpdir="$(mktemp -d "$wiki_dir/.tmpXXXXXX")"
+  trap "rm -rf '$tmpdir'" EXIT
   local payload="$tmpdir/payload.json"
   cat > "$payload"  # read stdin
 
@@ -125,13 +119,14 @@ cmd_index_merge() {
   jq -r '.[] | [.path, .summary] | @tsv' "$payload" > "$tmpdir/payload.tsv"
   while IFS=$'\t' read -r path summary; do
     # Remove any existing row with this path, then append.
-    grep -v $'^'"$path"$'\t' "$merged" > "$merged.new" 2>/dev/null || true
+    awk -F'\t' -v p="$path" '$1 != p' "$merged" > "$merged.new"
     mv "$merged.new" "$merged"
     printf "%s\t%s\n" "$path" "$summary" >> "$merged"
   done < "$tmpdir/payload.tsv"
 
-  # Orphan detection: list every .md under wiki/ excluding index.md, log.md,
-  # and wiki-schema.yaml. Compare against merged paths.
+  # Orphan detection: list every .md under wiki/ excluding index.md and log.md
+  # (wiki-schema.yaml is excluded automatically by the *.md glob).
+  # Compare against merged paths.
   local ondisk="$tmpdir/ondisk.txt"
   ( cd "$wiki_dir" && find . -type f -name '*.md' \
       ! -name 'index.md' ! -name 'log.md' \
