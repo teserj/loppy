@@ -62,6 +62,135 @@ cmd_move() {
   fi
 }
 
+# Map namespace → section heading used in index.md.
+# Keeps insertion order stable.
+_index_sections() {
+  cat <<'EOF'
+concepts|## Concepts
+entities|## Entities
+sources|## Sources
+topics|## Topics
+EOF
+}
+
+# Derive namespace from a wiki-relative path like "wiki/concepts/foo.md".
+_namespace_of() {
+  local p="$1"
+  p="${p#wiki/}"
+  echo "${p%%/*}"
+}
+
+cmd_index_merge() {
+  local wiki_dir; wiki_dir="$(cmd_config wiki_dir)"
+  local idx="$wiki_dir/index.md"
+  [[ -f "$idx" ]] || { echo "loppy index-merge: $idx not found" >&2; return 1; }
+
+  local today="${LOPPY_TODAY:-$(date +%Y-%m-%d)}"
+  local tmpdir; tmpdir="$(mktemp -d)"
+  local payload="$tmpdir/payload.json"
+  cat > "$payload"  # read stdin
+
+  # Validate JSON up front
+  jq -e . "$payload" >/dev/null 2>&1 || {
+    rm -rf "$tmpdir"
+    echo "loppy index-merge: stdin is not valid JSON" >&2
+    return 1
+  }
+
+  # Extract existing entries from the current index:
+  #   path<TAB>summary
+  # Matches lines of form: - [[wiki/<ns>/<slug>]] — <summary> (updated: YYYY-MM-DD)
+  local existing="$tmpdir/existing.tsv"
+  awk '
+    /^- \[\[wiki\// {
+      # extract link target using POSIX sub (no 3-arg match)
+      link = $0
+      sub(/^- \[\[/, "", link)
+      sub(/\]\].*$/, "", link)
+      path = link ".md"
+      # strip leading "- [[...]] — "
+      rest = $0
+      sub(/^- \[\[[^]]+\]\][[:space:]]*—[[:space:]]*/, "", rest)
+      # strip trailing " (updated: YYYY-MM-DD)"
+      sub(/[[:space:]]*\(updated:[[:space:]]*[^)]+\)[[:space:]]*$/, "", rest)
+      printf "%s\t%s\n", path, rest
+    }
+  ' "$idx" > "$existing"
+
+  # Build the merged map: start from existing, overlay payload upserts.
+  local merged="$tmpdir/merged.tsv"
+  cp "$existing" "$merged"
+
+  # Append/update from payload
+  jq -r '.[] | [.path, .summary] | @tsv' "$payload" > "$tmpdir/payload.tsv"
+  while IFS=$'\t' read -r path summary; do
+    # Remove any existing row with this path, then append.
+    grep -v $'^'"$path"$'\t' "$merged" > "$merged.new" 2>/dev/null || true
+    mv "$merged.new" "$merged"
+    printf "%s\t%s\n" "$path" "$summary" >> "$merged"
+  done < "$tmpdir/payload.tsv"
+
+  # Orphan detection: list every .md under wiki/ excluding index.md, log.md,
+  # and wiki-schema.yaml. Compare against merged paths.
+  local ondisk="$tmpdir/ondisk.txt"
+  ( cd "$wiki_dir" && find . -type f -name '*.md' \
+      ! -name 'index.md' ! -name 'log.md' \
+      | sed 's|^\./|wiki/|' | sort ) > "$ondisk"
+  local merged_paths="$tmpdir/merged_paths.txt"
+  cut -f1 "$merged" | sort -u > "$merged_paths"
+  while read -r p; do
+    if ! grep -Fxq "$p" "$merged_paths"; then
+      echo "loppy index-merge: orphan: $p" >&2
+    fi
+  done < "$ondisk"
+
+  # Count total entries in merged
+  local total; total=$(wc -l < "$merged" | tr -d ' ')
+
+  # Render new index.md
+  local out="$tmpdir/index.md.new"
+  {
+    echo "---"
+    echo "type: index"
+    echo "title: Wiki Index"
+    echo "updated: $today"
+    echo "---"
+    echo ""
+    echo "# Wiki Index"
+    echo ""
+    echo "Catalog of all wiki pages. Updated on every ingest. Read this first when answering queries."
+    echo ""
+    echo "Total pages: $total"
+
+    _index_sections | while IFS='|' read -r ns heading; do
+      # emit all entries for this namespace, sorted by path
+      local section_entries
+      section_entries=$(awk -F'\t' -v ns="$ns" -v today="$today" '
+        {
+          n = $1
+          sub(/^wiki\//, "", n)
+          split(n, a, "/")
+          if (a[1] == ns) {
+            slug = $1
+            sub(/\.md$/, "", slug)
+            printf "- [[%s]] — %s (updated: %s)\n", slug, $2, today
+          }
+        }
+      ' "$merged" | sort)
+      echo ""
+      echo "$heading"
+      if [[ -n "$section_entries" ]]; then
+        echo ""
+        echo "$section_entries"
+      fi
+    done
+  } > "$out"
+
+  # Atomic replace
+  mv "$out" "$idx"
+  rm -rf "$tmpdir"
+}
+
 usage() {
   cat <<'EOF'
 loppy — mechanics helper for the Loppy plugin.
@@ -70,6 +199,7 @@ Usage:
   loppy config [key]              Print config JSON or a single value.
   loppy next [N]                  List up to N unprocessed source files.
   loppy move <file>               Move a source into processed/.
+  loppy index-merge               Merge stdin JSON [{path, summary}...] into wiki/index.md.
 
 EOF
 }
@@ -84,6 +214,7 @@ main() {
     config) cmd_config "$@" ;;
     next) cmd_next "$@" ;;
     move) cmd_move "$@" ;;
+    index-merge) cmd_index_merge "$@" ;;
     *) echo "loppy: unknown subcommand: $sub" >&2; usage >&2; return 1 ;;
   esac
 }
