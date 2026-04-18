@@ -2,95 +2,51 @@
 
 load ../helpers/setup
 
-setup() {
-  isolate_env
-  mkdir -p "$WIKI_DIR" "$SOURCES_DIR"
+# Skills replace commands/wiki.js. Tests verify skill content quality.
+
+@test "skill ingest: documents single mode" {
+  grep -q "single" "$PLUGIN_ROOT/skills/ingest/SKILL.md"
 }
 
-teardown() {
-  cleanup_env
+@test "skill ingest: documents batch mode" {
+  grep -q "batch" "$PLUGIN_ROOT/skills/ingest/SKILL.md"
 }
 
-@test "wiki: command file exists" {
-  [[ -f "$PLUGIN_ROOT/commands/wiki.js" ]]
+@test "skill ingest: includes frontmatter schema" {
+  grep -q "type:" "$PLUGIN_ROOT/skills/ingest/SKILL.md"
+  grep -q "confidence:" "$PLUGIN_ROOT/skills/ingest/SKILL.md"
+  grep -q "domain:" "$PLUGIN_ROOT/skills/ingest/SKILL.md"
 }
 
-@test "wiki: command is valid JavaScript" {
-  node --check "$PLUGIN_ROOT/commands/wiki.js"
+@test "skill ingest: instructs to update index" {
+  grep -q "index-merge" "$PLUGIN_ROOT/skills/ingest/SKILL.md"
 }
 
-@test "wiki: exports handler function" {
-  output=$(node -e "const m = require('$PLUGIN_ROOT/commands/wiki.js'); console.log(typeof m.handler)")
-  [[ "$output" == "function" ]]
+@test "skill ingest: instructs to move source" {
+  grep -q "loppy move" "$PLUGIN_ROOT/skills/ingest/SKILL.md"
 }
 
-@test "wiki: exports subcommands array" {
-  output=$(node -e "const m = require('$PLUGIN_ROOT/commands/wiki.js'); console.log(Array.isArray(m.subcommands))")
-  [[ "$output" == "true" ]]
+@test "skill ingest: instructs to log operation" {
+  grep -q "loppy log" "$PLUGIN_ROOT/skills/ingest/SKILL.md"
 }
 
-@test "wiki: ingest subcommand defined" {
-  output=$(node -e "const m = require('$PLUGIN_ROOT/commands/wiki.js'); console.log(m.subcommands.some(s => s.name === 'ingest'))")
-  [[ "$output" == "true" ]]
+@test "skill query: uses ARGUMENTS placeholder" {
+  grep -q "ARGUMENTS" "$PLUGIN_ROOT/skills/query/SKILL.md"
 }
 
-@test "wiki: query subcommand defined" {
-  output=$(node -e "const m = require('$PLUGIN_ROOT/commands/wiki.js'); console.log(m.subcommands.some(s => s.name === 'query'))")
-  [[ "$output" == "true" ]]
+@test "skill query: documents filter syntax" {
+  grep -q "type:" "$PLUGIN_ROOT/skills/query/SKILL.md"
+  grep -q "domain:" "$PLUGIN_ROOT/skills/query/SKILL.md"
 }
 
-@test "wiki: lint subcommand defined" {
-  output=$(node -e "const m = require('$PLUGIN_ROOT/commands/wiki.js'); console.log(m.subcommands.some(s => s.name === 'lint'))")
-  [[ "$output" == "true" ]]
+@test "skill lint: documents error categories" {
+  grep -q "missing_field\|bad_enum\|broken_link" "$PLUGIN_ROOT/skills/lint/SKILL.md"
 }
 
-@test "wiki: handler accepts name, args, tools parameters" {
-  output=$(node -e "const m = require('$PLUGIN_ROOT/commands/wiki.js'); console.log(m.handler.length >= 3 ? 'ok' : 'fail')")
-  [[ "$output" == "ok" ]]
+@test "skill lint: offers to fix issues" {
+  grep -qi "fix" "$PLUGIN_ROOT/skills/lint/SKILL.md"
 }
 
-@test "wiki: ingest single mode returns readable output" {
-  # Create a test source file
-  echo "test content" > "$SOURCES_DIR/test.md"
-
-  # Test ingest single mode - should return text mentioning the source
-  output=$(node -e "
-    process.env.XDG_CONFIG_HOME = '$XDG_CONFIG_HOME';
-    const m = require('$PLUGIN_ROOT/commands/wiki.js');
-    m.handler('wiki', ['ingest', 'single'], {}).then(result => {
-      console.log(result);
-    }).catch(err => {
-      console.error('Error: ' + err.message);
-      process.exit(1);
-    });
-  ")
-  [[ "$output" =~ "test.md" ]] || [[ "$output" =~ "ingest" ]]
-}
-
-@test "wiki: query returns text mentioning no results when index missing" {
-  output=$(node -e "
-    process.env.XDG_CONFIG_HOME = '$XDG_CONFIG_HOME';
-    const m = require('$PLUGIN_ROOT/commands/wiki.js');
-    m.handler('wiki', ['query', 'test'], {}).then(result => {
-      console.log(result);
-    }).catch(err => {
-      console.error('Error: ' + err.message);
-      process.exit(1);
-    });
-  ")
-  [[ "$output" =~ "index" ]] || [[ "$output" =~ "wiki" ]] || [[ "$output" =~ "No" ]]
-}
-
-@test "wiki: lint returns text about schema when no pages exist" {
-  output=$(node -e "
-    process.env.XDG_CONFIG_HOME = '$XDG_CONFIG_HOME';
-    const m = require('$PLUGIN_ROOT/commands/wiki.js');
-    m.handler('wiki', ['lint'], {}).then(result => {
-      console.log(result);
-    }).catch(err => {
-      console.error('Error: ' + err.message);
-      process.exit(1);
-    });
-  ")
-  [[ "$output" =~ "schema" ]] || [[ "$output" =~ "valid" ]] || [[ "$output" =~ "issues" ]]
+@test "skill lint: logs result" {
+  grep -q "loppy log" "$PLUGIN_ROOT/skills/lint/SKILL.md"
 }

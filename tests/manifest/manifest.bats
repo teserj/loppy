@@ -18,68 +18,62 @@ load ../helpers/setup
   jq -e '.author' "$manifest" > /dev/null
 }
 
-@test "manifest: has commands array" {
+@test "manifest: no commands/hooks/slashCommands (metadata only)" {
   manifest="$BATS_TEST_DIRNAME/../../.claude-plugin/plugin.json"
-  jq -e '.commands | type == "array"' "$manifest" > /dev/null
+  # plugin.json should be metadata only per Claude Code spec
+  jq -e 'has("commands") | not' "$manifest" > /dev/null
+  jq -e 'has("slashCommands") | not' "$manifest" > /dev/null
 }
 
-@test "manifest: defines config command" {
-  manifest="$BATS_TEST_DIRNAME/../../.claude-plugin/plugin.json"
-  jq -e '.commands[] | select(.name == "config")' "$manifest" > /dev/null
+@test "skills: ingest SKILL.md exists" {
+  [[ -f "$BATS_TEST_DIRNAME/../../skills/ingest/SKILL.md" ]]
 }
 
-@test "manifest: defines next command" {
-  manifest="$BATS_TEST_DIRNAME/../../.claude-plugin/plugin.json"
-  jq -e '.commands[] | select(.name == "next")' "$manifest" > /dev/null
+@test "skills: query SKILL.md exists" {
+  [[ -f "$BATS_TEST_DIRNAME/../../skills/query/SKILL.md" ]]
 }
 
-@test "manifest: defines move command" {
-  manifest="$BATS_TEST_DIRNAME/../../.claude-plugin/plugin.json"
-  jq -e '.commands[] | select(.name == "move")' "$manifest" > /dev/null
+@test "skills: lint SKILL.md exists" {
+  [[ -f "$BATS_TEST_DIRNAME/../../skills/lint/SKILL.md" ]]
 }
 
-@test "manifest: defines index-merge command" {
-  manifest="$BATS_TEST_DIRNAME/../../.claude-plugin/plugin.json"
-  jq -e '.commands[] | select(.name == "index-merge")' "$manifest" > /dev/null
+@test "skills: ingest has description in frontmatter" {
+  grep -q "^description:" "$BATS_TEST_DIRNAME/../../skills/ingest/SKILL.md"
 }
 
-@test "manifest: defines log command" {
-  manifest="$BATS_TEST_DIRNAME/../../.claude-plugin/plugin.json"
-  jq -e '.commands[] | select(.name == "log")' "$manifest" > /dev/null
+@test "skills: query has description in frontmatter" {
+  grep -q "^description:" "$BATS_TEST_DIRNAME/../../skills/query/SKILL.md"
 }
 
-@test "manifest: defines lint-frontmatter command" {
-  manifest="$BATS_TEST_DIRNAME/../../.claude-plugin/plugin.json"
-  jq -e '.commands[] | select(.name == "lint-frontmatter")' "$manifest" > /dev/null
+@test "skills: lint has description in frontmatter" {
+  grep -q "^description:" "$BATS_TEST_DIRNAME/../../skills/lint/SKILL.md"
 }
 
-@test "manifest: has hooks array" {
-  manifest="$BATS_TEST_DIRNAME/../../.claude-plugin/plugin.json"
-  jq -e '.hooks | type == "array"' "$manifest" > /dev/null
+@test "skills: ingest references loppy commands" {
+  grep -q "loppy" "$BATS_TEST_DIRNAME/../../skills/ingest/SKILL.md"
 }
 
-@test "manifest: defines guard-vault hook" {
-  manifest="$BATS_TEST_DIRNAME/../../.claude-plugin/plugin.json"
-  jq -e '.hooks[] | select(.id == "guard-vault")' "$manifest" > /dev/null
+@test "skills: query references loppy commands" {
+  grep -q "loppy" "$BATS_TEST_DIRNAME/../../skills/query/SKILL.md"
 }
 
-@test "manifest: guard-vault is PreToolUse" {
-  manifest="$BATS_TEST_DIRNAME/../../.claude-plugin/plugin.json"
-  event=$(jq -r '.hooks[] | select(.id == "guard-vault") | .event' "$manifest")
-  [[ "$event" == "PreToolUse" ]]
+@test "skills: lint references loppy commands" {
+  grep -q "loppy lint-frontmatter" "$BATS_TEST_DIRNAME/../../skills/lint/SKILL.md"
 }
 
-@test "manifest: has slashCommands array" {
-  manifest="$BATS_TEST_DIRNAME/../../.claude-plugin/plugin.json"
-  jq -e '.slashCommands | type == "array"' "$manifest" > /dev/null
+@test "hooks: hooks.json exists" {
+  [[ -f "$BATS_TEST_DIRNAME/../../hooks/hooks.json" ]]
 }
 
-@test "manifest: defines wiki slash command" {
-  manifest="$BATS_TEST_DIRNAME/../../.claude-plugin/plugin.json"
-  jq -e '.slashCommands[] | select(.name == "wiki")' "$manifest" > /dev/null
+@test "hooks: hooks.json valid JSON" {
+  jq . "$BATS_TEST_DIRNAME/../../hooks/hooks.json" > /dev/null
 }
 
-@test "manifest: wiki command has subcommands" {
-  manifest="$BATS_TEST_DIRNAME/../../.claude-plugin/plugin.json"
-  jq -e '.slashCommands[] | select(.name == "wiki") | .subcommands | length > 0' "$manifest" > /dev/null
+@test "hooks: PreToolUse guard-vault registered" {
+  jq -e '.hooks.PreToolUse | length > 0' "$BATS_TEST_DIRNAME/../../hooks/hooks.json" > /dev/null
+}
+
+@test "hooks: guard-vault matches Bash tool" {
+  matcher=$(jq -r '.hooks.PreToolUse[0].matcher' "$BATS_TEST_DIRNAME/../../hooks/hooks.json")
+  [[ "$matcher" == "Bash" ]]
 }
