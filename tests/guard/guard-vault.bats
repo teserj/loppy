@@ -75,6 +75,20 @@ teardown() {
   [[ "$output" == *"BLOCK"* ]]
 }
 
+@test "guard: block shred of .git directory" {
+  input="{\"tool\": \"bash\", \"command\": \"shred -vfz $VAULT_DIR/.git/HEAD\"}"
+  run bash -c "echo '$input' | '$GUARD_SCRIPT'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCK"* ]]
+}
+
+@test "guard: block mv of .git directory" {
+  input="{\"tool\": \"bash\", \"command\": \"mv $VAULT_DIR/.git $VAULT_DIR/.git-backup\"}"
+  run bash -c "echo '$input' | '$GUARD_SCRIPT'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCK"* ]]
+}
+
 @test "guard: block unlink in vault" {
   input="{\"tool\": \"bash\", \"command\": \"unlink $VAULT_DIR/file.md\"}"
   run bash -c "echo '$input' | '$GUARD_SCRIPT'"
