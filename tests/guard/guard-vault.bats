@@ -68,6 +68,13 @@ teardown() {
   [[ "$output" == *"BLOCK"* ]]
 }
 
+@test "guard: block rm of .git directory (prevent losing history)" {
+  input="{\"tool\": \"bash\", \"command\": \"rm -rf $VAULT_DIR/.git\"}"
+  run bash -c "echo '$input' | '$GUARD_SCRIPT'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"BLOCK"* ]]
+}
+
 @test "guard: block unlink in vault" {
   input="{\"tool\": \"bash\", \"command\": \"unlink $VAULT_DIR/file.md\"}"
   run bash -c "echo '$input' | '$GUARD_SCRIPT'"
