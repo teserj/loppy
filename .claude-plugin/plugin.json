@@ -1,0 +1,173 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/plugin-schema.json",
+  "schemaVersion": "1",
+  "id": "loppy",
+  "name": "Loppy",
+  "version": "0.1.0",
+  "description": "Personal knowledge management plugin implementing Karpathy's LLM Wiki pattern. Ingests sources, compiles wikis, and provides LLM-driven knowledge retrieval.",
+  "author": "Anthropic",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/anthropics/claude-code-plugins/tree/main/loppy",
+  "keywords": ["knowledge-management", "wiki", "pkm", "llm", "agent"],
+  "minimumClaudeVersion": "claude-opus-4-7",
+  "commands": [
+    {
+      "name": "config",
+      "description": "Display or verify Loppy configuration",
+      "longDescription": "Reads and displays the current Loppy config from ~/.config/loppy/config.json. Shows vault paths and batch settings.",
+      "executable": "./bin/loppy",
+      "args": ["config"]
+    },
+    {
+      "name": "next",
+      "description": "List next unprocessed sources",
+      "longDescription": "Lists up to N unprocessed source files from the sources directory. Use with 'loppy move' to mark as processed.",
+      "executable": "./bin/loppy",
+      "args": ["next"],
+      "parameters": [
+        {
+          "name": "count",
+          "description": "Number of sources to list (default: 1)",
+          "type": "number",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "move",
+      "description": "Move source to processed directory",
+      "longDescription": "Relocates a source file from sources_dir to processed/. If vault is a git repo, uses git mv for history preservation.",
+      "executable": "./bin/loppy",
+      "args": ["move"],
+      "parameters": [
+        {
+          "name": "source",
+          "description": "Source file path",
+          "type": "string"
+        },
+        {
+          "name": "destination",
+          "description": "Destination directory (relative to sources_dir)",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "index-merge",
+      "description": "Update wiki index with new pages",
+      "longDescription": "Reads JSON from stdin with page metadata and merges into index.md. Auto-detects orphaned pages and maintains TSV format.",
+      "executable": "./bin/loppy",
+      "args": ["index-merge"]
+    },
+    {
+      "name": "log",
+      "description": "Append entry to operation log",
+      "longDescription": "Adds timestamped entry to log.md. Prepends to file maintaining newest-first order.",
+      "executable": "./bin/loppy",
+      "args": ["log"],
+      "parameters": [
+        {
+          "name": "title",
+          "description": "Operation title",
+          "type": "string"
+        },
+        {
+          "name": "details",
+          "description": "Operation details (multi-line OK)",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "lint-frontmatter",
+      "description": "Validate all wiki page frontmatter",
+      "longDescription": "Scans all markdown pages in wiki_dir and validates YAML frontmatter. Checks required fields, enum values, staleness, broken links. Returns JSON findings.",
+      "executable": "./bin/loppy",
+      "args": ["lint-frontmatter"]
+    }
+  ],
+  "hooks": [
+    {
+      "id": "guard-vault",
+      "name": "Guard Vault Operations",
+      "description": "Blocks destructive Bash commands (rm, shred, mv) targeting vault directories",
+      "event": "PreToolUse",
+      "executable": "./hooks/guard-vault.sh",
+      "tools": ["bash"]
+    }
+  ],
+  "slashCommands": [
+    {
+      "name": "wiki",
+      "description": "LLM-driven wiki management: ingest sources, query knowledge, lint schemas",
+      "subcommands": [
+        {
+          "name": "ingest",
+          "description": "Ingest single source or batch-ingest from raw sources",
+          "parameters": [
+            {
+              "name": "mode",
+              "description": "single|batch (default: single)",
+              "type": "string",
+              "optional": true
+            },
+            {
+              "name": "count",
+              "description": "Number of sources to batch-ingest (default: batch_size from config)",
+              "type": "number",
+              "optional": true
+            }
+          ]
+        },
+        {
+          "name": "query",
+          "description": "Query the wiki knowledge base by keyword, tag, type, or domain",
+          "parameters": [
+            {
+              "name": "query",
+              "description": "Search term, tag, type, or domain filter",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "lint",
+          "description": "Validate wiki schema: required fields, enum values, broken links, staleness",
+          "parameters": [
+            {
+              "name": "page",
+              "description": "Specific page to lint (optional; defaults to all pages)",
+              "type": "string",
+              "optional": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "configuration": {
+    "type": "object",
+    "properties": {
+      "vault_dir": {
+        "type": "string",
+        "description": "Absolute path to vault base directory",
+        "required": true
+      },
+      "sources_dir": {
+        "type": "string",
+        "description": "Absolute path to raw sources directory",
+        "required": true
+      },
+      "wiki_dir": {
+        "type": "string",
+        "description": "Absolute path to compiled wiki directory",
+        "required": true
+      },
+      "batch_size": {
+        "type": "number",
+        "description": "Number of pages to ingest at a time in batch mode (default: 5)",
+        "default": 5
+      }
+    }
+  }
+}
