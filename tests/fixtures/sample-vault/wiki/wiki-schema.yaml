@@ -1,0 +1,46 @@
+# Loppy Wiki Schema
+# Every wiki page should include a frontmatter block like this.
+# This is a template showing required and optional fields.
+
+---
+type: sources
+title: "Example Page Title"
+created: 2026-04-18
+updated: 2026-04-18
+confidence: high
+domain: tech
+tags: [example, template]
+links: [wiki/concepts/example]
+---
+
+# Page content starts here
+
+Body of the wiki page in markdown format.
+
+## Frontmatter Fields
+
+- **type**: Category of the page. One of: `sources`, `entities`, `concepts`, `projects`, `thoughts`, `todos`, `worklogs`.
+  - `sources`: Raw source material (blog posts, papers, links)
+  - `entities`: People, organizations, tools, products
+  - `concepts`: Ideas, patterns, theories
+  - `projects`: Work initiatives or personal projects
+  - `thoughts`: Personal reflections or ideas
+  - `todos`: Action items or tasks
+  - `worklogs`: Time-stamped activity logs
+
+- **title**: Human-readable title (1 line, no markdown)
+
+- **created**: ISO 8601 date when page was created (YYYY-MM-DD)
+
+- **updated**: ISO 8601 date of last update (YYYY-MM-DD)
+
+- **confidence**: Reliability of information. One of: `high`, `medium`, `low`, `stale`.
+  - `stale`: Page last updated >90 days ago (auto-detected by `loppy lint-frontmatter`)
+
+- **domain**: Primary domain. One of: `tech`, `finance`, `business`, `work`, `career`, `hobbies`, `family`, `parenting`, `relationships`, `self`.
+
+- **tags**: YAML list of topic strings. Use for keyword search and grouping.
+
+- **links**: YAML list of wikilinks to related pages. Format: `wiki/category/page-name`.
+  - LLM will validate these links exist and auto-correct or report broken ones.
+  - Links drive the knowledge graph; keep them accurate.
