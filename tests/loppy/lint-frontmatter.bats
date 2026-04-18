@@ -167,6 +167,44 @@ links: [wiki/entities/ghost]
   '
 }
 
+@test "lint multi-element links: broken-link only for missing target, not existing" {
+  mkdir -p "$WIKI_DIR/wiki"
+  write_page "$WIKI_DIR/wiki/a.md" \
+"---
+type: concept
+title: A
+created: 2026-04-17
+updated: 2026-04-17
+confidence: high
+domain: tech
+tags: []
+links: []
+---"
+  write_page "$WIKI_DIR/concepts/multi.md" \
+"---
+type: concept
+title: Multi
+created: 2026-04-17
+updated: 2026-04-17
+confidence: high
+domain: tech
+tags: []
+links: [wiki/a, wiki/b]
+---"
+  run "$LOPPY_BIN" lint-frontmatter
+  [ "$status" -eq 0 ]
+  # wiki/b is missing -> broken-link for wiki/b
+  echo "$output" | jq -e '
+    .[] | select(.path | endswith("multi.md"))
+          | .findings | any(.rule == "broken-link" and .target == "wiki/b")
+  '
+  # wiki/a exists -> no broken-link for wiki/a
+  echo "$output" | jq -e '
+    .[] | select(.path | endswith("multi.md"))
+          | .findings | any(.rule == "broken-link" and .target == "wiki/a")
+  ' && false || true
+}
+
 @test "lint skips index.md and log.md themselves" {
   run "$LOPPY_BIN" lint-frontmatter
   [ "$status" -eq 0 ]

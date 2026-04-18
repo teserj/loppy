@@ -259,10 +259,21 @@ _frontmatter_to_json() {
       if (val ~ /^\[.*\]$/) {
         # inline array: parse elements
         inner = substr(val, 2, length(val)-2)
-        gsub(/[[:space:]]*,[[:space:]]*/, "\",\"", inner)
-        gsub(/"/, "\\\"", inner)       # escape any existing quotes
-        if (inner == "") { printf "\"%s\":[]", key }
-        else             { printf "\"%s\":[\"%s\"]", key, inner }
+        if (inner == "") {
+          printf "\"%s\":[]", key
+        } else {
+          n = split(inner, arr, ",")
+          printf "\"%s\":[", key
+          for (i=1; i<=n; i++) {
+            sub(/^[[:space:]]+/, "", arr[i])
+            sub(/[[:space:]]+$/, "", arr[i])
+            gsub(/\\/, "\\\\", arr[i])
+            gsub(/"/, "\\\"", arr[i])
+            if (i>1) printf ","
+            printf "\"%s\"", arr[i]
+          }
+          printf "]"
+        }
       } else {
         gsub(/\\/, "\\\\", val)
         gsub(/"/, "\\\"", val)
@@ -297,6 +308,7 @@ _days_since_fallback() {
 cmd_lint_frontmatter() {
   local wiki_dir; wiki_dir="$(cmd_config wiki_dir)"
   local tmpdir; tmpdir="$(mktemp -d)"
+  trap "rm -rf '$tmpdir'" EXIT
 
   # Build set of all existing wiki page paths (relative, without .md) for link resolution.
   local existing="$tmpdir/existing.txt"
@@ -316,16 +328,16 @@ cmd_lint_frontmatter() {
 
   local findings_dir="$tmpdir/findings"; mkdir -p "$findings_dir"
 
+  # Helper: append a finding as JSON (uses $findings from outer scope).
+  add() {
+    findings=$(echo "$findings" | jq --argjson f "$1" '. + [$f]')
+  }
+
   # Iterate every candidate page.
   while IFS= read -r rel; do
     local file="$wiki_dir/$rel.md"
     local fm; fm="$(_frontmatter_to_json "$file")"
     local findings='[]'
-
-    # Helper: append a finding as JSON.
-    add() {
-      findings=$(echo "$findings" | jq --argjson f "$1" '. + [$f]')
-    }
 
     # 1. required fields present?
     for field in $(_required_fields); do
