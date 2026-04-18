@@ -186,6 +186,48 @@ cmd_index_merge() {
   rm -rf "$tmpdir"
 }
 
+cmd_log() {
+  local op="${1:-}"
+  local title="${2:-}"
+  if [[ -z "$op" || -z "$title" ]]; then
+    echo "loppy log: usage: loppy log <op> <title>   (body from stdin)" >&2
+    return 1
+  fi
+  local wiki_dir; wiki_dir="$(cmd_config wiki_dir)"
+  local logf="$wiki_dir/log.md"
+  [[ -f "$logf" ]] || { echo "loppy log: $logf not found" >&2; return 1; }
+  local today="${LOPPY_TODAY:-$(date +%Y-%m-%d)}"
+  local body; body="$(cat)"   # slurp stdin
+
+  local tmpdir; tmpdir="$(mktemp -d)"
+  local out="$tmpdir/log.md.new"
+
+  # Split log into "header" (everything up to and including the first "---" separator
+  # line that follows the H1) and "rest" (anything after). Prepend new entry between
+  # the header and the rest.
+  #
+  # Strategy: find the line number of the first occurrence of a line exactly equal
+  # to "---" that appears *after* a line starting with "# ". That's our separator.
+  # Everything up to and including that line is the header.
+  local sep_line
+  sep_line=$(awk '
+    found_h1 { if ($0 == "---") { print NR; exit } }
+    /^# / { found_h1 = 1 }
+  ' "$logf")
+  if [[ -z "$sep_line" ]]; then
+    # No separator — append a basic one, then the entry.
+    cp "$logf" "$out"
+    printf "\n---\n\n## [%s] %s | %s\n\n%s\n" "$today" "$op" "$title" "$body" >> "$out"
+  else
+    head -n "$sep_line" "$logf" > "$out"
+    printf "\n## [%s] %s | %s\n\n%s\n" "$today" "$op" "$title" "$body" >> "$out"
+    tail -n +$((sep_line + 1)) "$logf" >> "$out"
+  fi
+
+  mv "$out" "$logf"
+  rm -rf "$tmpdir"
+}
+
 usage() {
   cat <<'EOF'
 loppy — mechanics helper for the Loppy plugin.
@@ -195,6 +237,7 @@ Usage:
   loppy next [N]                  List up to N unprocessed source files.
   loppy move <file>               Move a source into processed/.
   loppy index-merge               Merge stdin JSON [{path, summary}...] into wiki/index.md.
+  loppy log <op> <title>          Prepend a new log entry (body on stdin).
 
 EOF
 }
@@ -210,6 +253,7 @@ main() {
     next) cmd_next "$@" ;;
     move) cmd_move "$@" ;;
     index-merge) cmd_index_merge "$@" ;;
+    log) cmd_log "$@" ;;
     *) echo "loppy: unknown subcommand: $sub" >&2; usage >&2; return 1 ;;
   esac
 }
