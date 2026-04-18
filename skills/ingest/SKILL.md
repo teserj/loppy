@@ -15,9 +15,9 @@ Parse `$ARGUMENTS`:
 
 1. **Load config**: Run `loppy config` to get vault paths and batch_size.
 
-2. **List sources**: Run `loppy next <count>` to get unprocessed sources. If empty, report "No unprocessed sources found" and stop.
+2. **List sources**: Run `loppy next <count>` to get unprocessed sources. Output is one **absolute path per line** (e.g. `/home/user/vault/sources/Agentic AI Notes.md`). If empty, report "No unprocessed sources found" and stop.
 
-3. **For each source file**:
+3. **For each source file** (use the exact absolute path from step 2):
    a. Read the file content (Read tool)
    b. Extract key knowledge: facts, concepts, entities, relationships
    c. Create a wiki page at `wiki/<type>/<slug>.md` with this exact frontmatter:
@@ -38,7 +38,11 @@ Parse `$ARGUMENTS`:
       ```bash
       echo '[{"path":"wiki/<type>/<slug>.md","summary":"<one-line summary>"}]' | loppy index-merge
       ```
-   f. Move source to processed: `loppy move <filename> processed`
+   f. Move source to processed — pass the **exact absolute path** from step 2, one argument only:
+      ```bash
+      loppy move "/home/user/vault/sources/Agentic AI Notes.md"
+      ```
+      Destination is always `sources_dir/processed/` — do NOT pass a second argument.
    g. Log the operation: `loppy log "Ingested <title>" "Created wiki/<type>/<slug>.md from <source>"`
 
 4. **Summary**: Report how many pages were created and any issues.
