@@ -58,7 +58,38 @@ def cmd_next(args):
         print(str(f))
 
 
-def cmd_move(args): pass
+def cmd_move(args):
+    if not args:
+        print("loppy move: source path required", file=sys.stderr)
+        sys.exit(1)
+    src = Path(args[0])
+    if not src.exists():
+        print(f"loppy move: source not found: {src}", file=sys.stderr)
+        sys.exit(1)
+    cfg = load_config()
+    sources_dir = Path(cfg["sources_dir"])
+    vault_dir = Path(cfg["vault_dir"])
+    processed = sources_dir / "processed"
+    dest = processed / src.name
+    if dest.exists():
+        print(f"loppy move: destination exists: {dest}", file=sys.stderr)
+        sys.exit(1)
+    processed.mkdir(parents=True, exist_ok=True)
+    # Use git mv if the file is tracked
+    try:
+        r = subprocess.run(
+            ["git", "-C", str(vault_dir), "ls-files", "--error-unmatch", "--", str(src)],
+            capture_output=True,
+        )
+        if r.returncode == 0:
+            subprocess.run(
+                ["git", "-C", str(vault_dir), "mv", str(src), str(dest)],
+                check=True,
+            )
+            return
+    except (subprocess.SubprocessError, FileNotFoundError):
+        pass
+    shutil.move(str(src), str(dest))
 def cmd_index_merge(args): pass
 def cmd_log(args): pass
 def cmd_lint_frontmatter(args): pass
