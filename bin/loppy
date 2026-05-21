@@ -56,6 +56,8 @@ def cmd_next(args):
     )
     for f in files[:n]:
         print(str(f))
+
+
 def cmd_move(args): pass
 def cmd_index_merge(args): pass
 def cmd_log(args): pass
