@@ -4,7 +4,7 @@
 # ///
 import json
 import os
-import re  # noqa: F401
+import re
 import shutil  # noqa: F401
 import sys
 import tempfile  # noqa: F401
@@ -116,6 +116,9 @@ def cmd_index_merge(args):
         payload = json.load(sys.stdin)
     except json.JSONDecodeError:
         print("loppy index-merge: stdin is not valid JSON", file=sys.stderr)
+        sys.exit(1)
+    if not isinstance(payload, list):
+        print("loppy index-merge: stdin must be a JSON array", file=sys.stderr)
         sys.exit(1)
 
     # Parse existing entries: "- [[wiki/ns/slug]] — summary (updated: date)"
