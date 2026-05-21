@@ -75,21 +75,24 @@ def cmd_move(args):
         print(f"loppy move: destination exists: {dest}", file=sys.stderr)
         sys.exit(1)
     processed.mkdir(parents=True, exist_ok=True)
-    # Use git mv if the file is tracked
+    git_tracked = False
     try:
         r = subprocess.run(
             ["git", "-C", str(vault_dir), "ls-files", "--error-unmatch", "--", str(src)],
             capture_output=True,
         )
-        if r.returncode == 0:
-            subprocess.run(
-                ["git", "-C", str(vault_dir), "mv", str(src), str(dest)],
-                check=True,
-            )
-            return
-    except (subprocess.SubprocessError, FileNotFoundError):
-        pass
+        git_tracked = r.returncode == 0
+    except FileNotFoundError:
+        pass  # git not installed
+    if git_tracked:
+        subprocess.run(
+            ["git", "-C", str(vault_dir), "mv", str(src), str(dest)],
+            check=True,
+        )
+        return
     shutil.move(str(src), str(dest))
+
+
 def cmd_index_merge(args): pass
 def cmd_log(args): pass
 def cmd_lint_frontmatter(args): pass
