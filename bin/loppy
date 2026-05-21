@@ -289,7 +289,63 @@ def _days_since(d: str) -> int | None:
         return None
 
 
-def cmd_lint_frontmatter(args): pass
+def cmd_lint_frontmatter(args):
+    cfg = load_config()
+    wiki_dir = Path(cfg["wiki_dir"])
+
+    existing = {
+        f.relative_to(wiki_dir).as_posix()[: -len(".md")]
+        for f in wiki_dir.rglob("*.md")
+        if f.name not in ("index.md", "log.md")
+    }
+
+    index_paths: set[str] = set()
+    index_file = wiki_dir / "index.md"
+    if index_file.exists():
+        for m in re.finditer(r"\[\[wiki/([^\]]+)\]\]", index_file.read_text(encoding="utf-8")):
+            index_paths.add(m.group(1))
+
+    results = []
+
+    for rel in sorted(existing):
+        file = wiki_dir / (rel + ".md")
+        fm = _parse_frontmatter(file)
+        findings = []
+
+        for field in _REQUIRED_FIELDS:
+            if field not in fm:
+                findings.append({"level": "error", "rule": "missing-field", "field": field})
+
+        for field, allowed in [
+            ("type", _ALLOWED_TYPES),
+            ("domain", _ALLOWED_DOMAINS),
+            ("confidence", _ALLOWED_CONFIDENCE),
+        ]:
+            val = fm.get(field, "")
+            if val and val not in allowed:
+                findings.append({"level": "error", "rule": "bad-enum", "field": field, "value": val})
+
+        upd = fm.get("updated", "")
+        conf = fm.get("confidence", "")
+        if upd and conf != "stale":
+            age = _days_since(upd)
+            if age is not None and age > 90:
+                findings.append({"level": "warn", "rule": "stale", "age_days": age})
+
+        if rel not in index_paths:
+            findings.append({"level": "warn", "rule": "orphan"})
+
+        links = fm.get("links", [])
+        if isinstance(links, list):
+            for link in links:
+                target = link[len("wiki/"):] if link.startswith("wiki/") else link
+                if target not in existing:
+                    findings.append({"level": "error", "rule": "broken-link", "target": link})
+
+        if findings:
+            results.append({"path": f"wiki/{rel}.md", "findings": findings})
+
+    print(json.dumps(results, indent=2))
 
 
 def usage():
