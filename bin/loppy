@@ -93,7 +93,96 @@ def cmd_move(args):
     shutil.move(str(src), str(dest))
 
 
-def cmd_index_merge(args): pass
+def _index_sections():
+    return [
+        ("concepts", "## Concepts"),
+        ("entities", "## Entities"),
+        ("sources", "## Sources"),
+        ("topics", "## Topics"),
+    ]
+
+
+def cmd_index_merge(args):
+    cfg = load_config()
+    wiki_dir = Path(cfg["wiki_dir"])
+    idx = wiki_dir / "index.md"
+    if not idx.exists():
+        print(f"loppy index-merge: {idx} not found", file=sys.stderr)
+        sys.exit(1)
+
+    today = os.environ.get("LOPPY_TODAY", date.today().isoformat())
+
+    try:
+        payload = json.load(sys.stdin)
+    except json.JSONDecodeError:
+        print("loppy index-merge: stdin is not valid JSON", file=sys.stderr)
+        sys.exit(1)
+
+    # Parse existing entries: "- [[wiki/ns/slug]] — summary (updated: date)"
+    existing: dict[str, str] = {}
+    pattern = re.compile(
+        r"^- \[\[wiki/([^\]]+)\]\]\s*—\s*(.*?)\s*\(updated:[^)]+\)\s*$"
+    )
+    for line in idx.read_text(encoding="utf-8").splitlines():
+        m = pattern.match(line)
+        if m:
+            existing[f"wiki/{m.group(1)}.md"] = m.group(2)
+
+    # Upsert payload entries
+    for entry in payload:
+        existing[entry["path"]] = entry["summary"]
+
+    # Orphan detection: .md files on disk not in merged map
+    on_disk = {
+        "wiki/" + f.relative_to(wiki_dir).as_posix()
+        for f in wiki_dir.rglob("*.md")
+        if f.name not in ("index.md", "log.md")
+    }
+    for p in sorted(on_disk):
+        if p not in existing:
+            print(f"loppy index-merge: orphan: {p}", file=sys.stderr)
+
+    total = len(existing)
+
+    lines = [
+        "---",
+        "type: index",
+        "title: Wiki Index",
+        f"updated: {today}",
+        "---",
+        "",
+        "# Wiki Index",
+        "",
+        "Catalog of all wiki pages. Updated on every ingest. Read this first when answering queries.",
+        "",
+        f"Total pages: {total}",
+    ]
+
+    for ns, heading in _index_sections():
+        lines.append("")
+        lines.append(heading)
+        section = sorted(
+            [(p, s) for p, s in existing.items() if p.startswith(f"wiki/{ns}/")],
+            key=lambda x: x[0],
+        )
+        if section:
+            lines.append("")
+            for path, summary in section:
+                slug = path[: -len(".md")]
+                lines.append(f"- [[{slug}]] — {summary} (updated: {today})")
+
+    content = "\n".join(lines) + "\n"
+
+    tmp = wiki_dir / f".tmp_index_{os.getpid()}"
+    try:
+        with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+            f.write(content)
+        tmp.replace(idx)
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
 def cmd_log(args): pass
 def cmd_lint_frontmatter(args): pass
 
