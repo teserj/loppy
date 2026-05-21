@@ -45,7 +45,17 @@ def cmd_config(args):
     print(cfg[key])
 
 
-def cmd_next(args): pass
+def cmd_next(args):
+    cfg = load_config()
+    n = int(args[0]) if args else int(cfg.get("batch_size", 5))
+    sources_dir = Path(cfg["sources_dir"])
+    files = sorted(
+        [f for f in sources_dir.glob("*.md") if f.is_file()]
+        + [f for f in sources_dir.glob("*.txt") if f.is_file()],
+        key=lambda f: str(f),
+    )
+    for f in files[:n]:
+        print(str(f))
 def cmd_move(args): pass
 def cmd_index_merge(args): pass
 def cmd_log(args): pass
