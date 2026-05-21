@@ -143,7 +143,7 @@ Validate wiki schema.
 
 **Unit tests** (`tests/`):
 - `tests/loppy/`: Bin command tests (40 tests)
-- `tests/guard/`: Guard hook tests (21 tests)
+- `tests/guard/`: Guard hook tests (18 tests)
 - `tests/templates/`: Template tests (10 tests)
 - `tests/setup/`: setup.sh tests (11 tests)
 - `tests/manifest/`: plugin.json tests (16 tests)

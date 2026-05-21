@@ -116,13 +116,9 @@ def test_guard_allows_write_tool(guard_env):
 
 def test_guard_fails_open_when_config_missing(guard_env, tmp_path):
     env, vault = guard_env
-    # Remove config
-    import os as _os
-    cfg = (tmp_path / "xdg" / "loppy" / "config.json") if _os.name != "nt" \
-        else (tmp_path / "appdata" / "loppy" / "config.json")
-    if cfg.exists():
-        cfg.unlink()
-    r = run_guard({"tool": "bash", "command": f"rm -rf /tmp/unrelated"}, env)
+    no_config_env = dict(env)
+    no_config_env["XDG_CONFIG_HOME"] = str(tmp_path / "empty_xdg")
+    r = run_guard({"tool": "bash", "command": f"rm -rf {vault}/file.md"}, no_config_env)
     assert r.returncode == 0
     assert r.stdout.strip() == "PASS"
 
