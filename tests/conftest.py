@@ -70,5 +70,5 @@ def loppy_env(vault, tmp_path):
         env["APPDATA"] = str(tmp_path / "appdata")
     else:
         env["XDG_CONFIG_HOME"] = str(tmp_path / "xdg")
-    env["LOPPY_TODAY"] = "2026-05-21"
+    env["LOPPY_TODAY"] = "2026-05-21"  # pinned for deterministic staleness tests
     return env, vault
