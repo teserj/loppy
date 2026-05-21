@@ -6,3 +6,6 @@
 # Test output
 tests/**/tmp/
 .bats-tmp/
+
+# Git worktrees
+.worktrees/
