@@ -1,406 +1,48 @@
-#!/usr/bin/env bash
-# loppy — mechanics helper for the Loppy Claude Code plugin.
-# Pure bash. No LLM dependency.
-set -euo pipefail
+#!/usr/bin/env -S uv run python3
+# /// script
+# requires-python = ">=3.10"
+# ///
+import json
+import os
+import re
+import shutil
+import sys
+import tempfile
+import subprocess
+from datetime import date, timedelta
+from pathlib import Path
 
-loppy_config_path() {
-  echo "${XDG_CONFIG_HOME:-$HOME/.config}/loppy/config.json"
-}
 
-cmd_config() {
-  local path; path="$(loppy_config_path)"
-  if [[ ! -f "$path" ]]; then
-    echo "loppy: config not found. Run setup.sh first." >&2
-    return 1
-  fi
-  if [[ $# -eq 0 ]]; then
-    jq . "$path" 2>/dev/null || { echo "loppy: malformed config JSON at $path" >&2; return 1; }
-  else
-    local key="$1"
-    local value
-    value="$(jq -er --arg k "$key" '.[$k]' "$path" 2>/dev/null)" || {
-      echo "loppy: config key not found: $key" >&2
-      return 1
-    }
-    echo "$value"
-  fi
-}
+def config_path() -> Path:
+    if os.name == "nt":
+        base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    return base / "loppy" / "config.json"
 
-cmd_next() {
-  local n="${1:-}"
-  local sources_dir; sources_dir="$(cmd_config sources_dir)"
-  if [[ -z "$n" ]]; then
-    n="$(cmd_config batch_size)"
-  fi
-  find "$sources_dir" -maxdepth 1 -type f \( -name '*.md' -o -name '*.txt' \) 2>/dev/null \
-    | sort | head -n "$n"
-}
 
-cmd_move() {
-  local src="${1:-}"
-  if [[ -z "$src" ]]; then
-    echo "loppy move: source path required" >&2
-    return 1
-  fi
-  if [[ ! -f "$src" ]]; then
-    echo "loppy move: source not found: $src" >&2
-    return 1
-  fi
-  local sources_dir; sources_dir="$(cmd_config sources_dir)"
-  local vault_dir; vault_dir="$(cmd_config vault_dir)"
-  local processed="$sources_dir/processed"
-  local dest="$processed/$(basename "$src")"
-  if [[ -e "$dest" ]]; then
-    echo "loppy move: destination exists: $dest" >&2
-    return 1
-  fi
-  mkdir -p "$processed"
-  if git -C "$vault_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    git -C "$vault_dir" mv "$src" "$dest"
-  else
-    mv "$src" "$dest"
-  fi
-}
+def load_config() -> dict:
+    path = config_path()
+    if not path.exists():
+        print("loppy: config not found. Run setup.py first.", file=sys.stderr)
+        sys.exit(1)
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        print(f"loppy: malformed config JSON at {path}", file=sys.stderr)
+        sys.exit(1)
 
-# Map namespace → section heading used in index.md.
-# Keeps insertion order stable.
-_index_sections() {
-  cat <<'EOF'
-concepts|## Concepts
-entities|## Entities
-sources|## Sources
-topics|## Topics
-EOF
-}
 
-cmd_index_merge() {
-  local wiki_dir; wiki_dir="$(cmd_config wiki_dir)"
-  local idx="$wiki_dir/index.md"
-  [[ -f "$idx" ]] || { echo "loppy index-merge: $idx not found" >&2; return 1; }
+def cmd_config(args): pass
+def cmd_next(args): pass
+def cmd_move(args): pass
+def cmd_index_merge(args): pass
+def cmd_log(args): pass
+def cmd_lint_frontmatter(args): pass
 
-  local today="${LOPPY_TODAY:-$(date +%Y-%m-%d)}"
-  local tmpdir; tmpdir="$(mktemp -d "$wiki_dir/.tmpXXXXXX")"
-  trap "rm -rf '$tmpdir'" EXIT
-  local payload="$tmpdir/payload.json"
-  cat > "$payload"  # read stdin
 
-  # Validate JSON up front
-  jq -e . "$payload" >/dev/null 2>&1 || {
-    rm -rf "$tmpdir"
-    echo "loppy index-merge: stdin is not valid JSON" >&2
-    return 1
-  }
-
-  # Extract existing entries from the current index:
-  #   path<TAB>summary
-  # Matches lines of form: - [[wiki/<ns>/<slug>]] — <summary> (updated: YYYY-MM-DD)
-  local existing="$tmpdir/existing.tsv"
-  awk '
-    /^- \[\[wiki\// {
-      # extract link target using POSIX sub (no 3-arg match)
-      link = $0
-      sub(/^- \[\[/, "", link)
-      sub(/\]\].*$/, "", link)
-      path = link ".md"
-      # strip leading "- [[...]] — "
-      rest = $0
-      sub(/^- \[\[[^]]+\]\][[:space:]]*—[[:space:]]*/, "", rest)
-      # strip trailing " (updated: YYYY-MM-DD)"
-      sub(/[[:space:]]*\(updated:[[:space:]]*[^)]+\)[[:space:]]*$/, "", rest)
-      printf "%s\t%s\n", path, rest
-    }
-  ' "$idx" > "$existing"
-
-  # Build the merged map: start from existing, overlay payload upserts.
-  local merged="$tmpdir/merged.tsv"
-  cp "$existing" "$merged"
-
-  # Append/update from payload
-  jq -r '.[] | [.path, .summary] | @tsv' "$payload" > "$tmpdir/payload.tsv"
-  while IFS=$'\t' read -r path summary; do
-    # Remove any existing row with this path, then append.
-    awk -F'\t' -v p="$path" '$1 != p' "$merged" > "$merged.new"
-    mv "$merged.new" "$merged"
-    printf "%s\t%s\n" "$path" "$summary" >> "$merged"
-  done < "$tmpdir/payload.tsv"
-
-  # Orphan detection: list every .md under wiki/ excluding index.md and log.md
-  # (wiki-schema.yaml is excluded automatically by the *.md glob).
-  # Compare against merged paths.
-  local ondisk="$tmpdir/ondisk.txt"
-  ( cd "$wiki_dir" && find . -type f -name '*.md' \
-      ! -name 'index.md' ! -name 'log.md' \
-      | sed 's|^\./|wiki/|' | sort ) > "$ondisk"
-  local merged_paths="$tmpdir/merged_paths.txt"
-  cut -f1 "$merged" | sort -u > "$merged_paths"
-  while read -r p; do
-    if ! grep -Fxq "$p" "$merged_paths"; then
-      echo "loppy index-merge: orphan: $p" >&2
-    fi
-  done < "$ondisk"
-
-  # Count total entries in merged
-  local total; total=$(wc -l < "$merged" | tr -d ' ')
-
-  # Render new index.md
-  local out="$tmpdir/index.md.new"
-  {
-    echo "---"
-    echo "type: index"
-    echo "title: Wiki Index"
-    echo "updated: $today"
-    echo "---"
-    echo ""
-    echo "# Wiki Index"
-    echo ""
-    echo "Catalog of all wiki pages. Updated on every ingest. Read this first when answering queries."
-    echo ""
-    echo "Total pages: $total"
-
-    _index_sections | while IFS='|' read -r ns heading; do
-      # emit all entries for this namespace, sorted by path
-      local section_entries
-      section_entries=$(awk -F'\t' -v ns="$ns" -v today="$today" '
-        {
-          n = $1
-          sub(/^wiki\//, "", n)
-          split(n, a, "/")
-          if (a[1] == ns) {
-            slug = $1
-            sub(/\.md$/, "", slug)
-            printf "- [[%s]] — %s (updated: %s)\n", slug, $2, today
-          }
-        }
-      ' "$merged" | sort)
-      echo ""
-      echo "$heading"
-      if [[ -n "$section_entries" ]]; then
-        echo ""
-        echo "$section_entries"
-      fi
-    done
-  } > "$out"
-
-  # Atomic replace
-  mv "$out" "$idx"
-  rm -rf "$tmpdir"
-}
-
-cmd_log() {
-  local op="${1:-}"
-  local title="${2:-}"
-  if [[ -z "$op" || -z "$title" ]]; then
-    echo "loppy log: usage: loppy log <op> <title>   (body from stdin)" >&2
-    return 1
-  fi
-  local wiki_dir; wiki_dir="$(cmd_config wiki_dir)"
-  local logf="$wiki_dir/log.md"
-  [[ -f "$logf" ]] || { echo "loppy log: $logf not found" >&2; return 1; }
-  local today="${LOPPY_TODAY:-$(date +%Y-%m-%d)}"
-  local body; body="$(cat)"   # slurp stdin
-
-  local tmpdir; tmpdir="$(mktemp -d "$wiki_dir/.tmpXXXXXX")"
-  trap "rm -rf '$tmpdir'" EXIT
-  local out="$tmpdir/log.md.new"
-
-  # Split log into "header" (everything up to and including the first "---" separator
-  # line that follows the H1) and "rest" (anything after). Prepend new entry between
-  # the header and the rest.
-  #
-  # Strategy: find the line number of the first occurrence of a line exactly equal
-  # to "---" that appears *after* a line starting with "# ". That's our separator.
-  # Everything up to and including that line is the header.
-  local sep_line
-  sep_line=$(awk '
-    found_h1 { if ($0 == "---") { print NR; exit } }
-    /^# / { found_h1 = 1 }
-  ' "$logf")
-  if [[ -z "$sep_line" ]]; then
-    # No separator — append a basic one, then the entry.
-    cp "$logf" "$out"
-    printf "\n---\n\n## [%s] %s | %s\n\n%s\n" "$today" "$op" "$title" "$body" >> "$out"
-  else
-    head -n "$sep_line" "$logf" > "$out"
-    printf "\n## [%s] %s | %s\n\n%s\n" "$today" "$op" "$title" "$body" >> "$out"
-    tail -n +$((sep_line + 1)) "$logf" >> "$out"
-  fi
-
-  mv "$out" "$logf"
-}
-
-# Built-in schema defaults. Used when wiki-schema.yaml missing or for baseline rules.
-_allowed_types()      { echo "entity concept source project thought todo worklog"; }
-_allowed_domains()    { echo "tech finance business work career hobbies family parenting relationships self"; }
-_allowed_confidence() { echo "high medium low stale"; }
-_required_fields()    { echo "type title created updated confidence domain tags links"; }
-
-# Extract YAML frontmatter as flat JSON. Supports:
-#   key: value
-#   key: [a, b, c]     (inline array)
-# Lists starting with "- " are not supported here (not used in our schema).
-_frontmatter_to_json() {
-  local file="$1"
-  awk '
-    BEGIN { inside=0; first=0; printf "{" }
-    /^---[[:space:]]*$/ {
-      if (!first) { inside=1; first=1; next }
-      else { inside=0; exit }
-    }
-    inside && /^[A-Za-z_-]+:/ {
-      # split on first colon
-      p = index($0, ":")
-      key = substr($0, 1, p-1)
-      val = substr($0, p+1)
-      sub(/^[[:space:]]*/, "", val)
-      sub(/[[:space:]]*$/, "", val)
-      # strip surrounding quotes
-      if (val ~ /^".*"$/) { val = substr(val, 2, length(val)-2) }
-      if (emitted++) printf ","
-      if (val ~ /^\[.*\]$/) {
-        # inline array: parse elements
-        inner = substr(val, 2, length(val)-2)
-        if (inner == "") {
-          printf "\"%s\":[]", key
-        } else {
-          n = split(inner, arr, ",")
-          printf "\"%s\":[", key
-          for (i=1; i<=n; i++) {
-            sub(/^[[:space:]]+/, "", arr[i])
-            sub(/[[:space:]]+$/, "", arr[i])
-            gsub(/\\/, "\\\\", arr[i])
-            gsub(/"/, "\\\"", arr[i])
-            if (i>1) printf ","
-            printf "\"%s\"", arr[i]
-          }
-          printf "]"
-        }
-      } else {
-        gsub(/\\/, "\\\\", val)
-        gsub(/"/, "\\\"", val)
-        printf "\"%s\":\"%s\"", key, val
-      }
-    }
-    END { printf "}" }
-  ' "$file"
-}
-
-# Compute day-difference between today and a YYYY-MM-DD string.
-_days_since() {
-  local d="$1"
-  local today="${LOPPY_TODAY:-$(date +%Y-%m-%d)}"
-  python3 - <<PY 2>/dev/null || _days_since_fallback "$d" "$today"
-from datetime import date
-a = date.fromisoformat("$d")
-b = date.fromisoformat("$today")
-print((b - a).days)
-PY
-}
-
-_days_since_fallback() {
-  # Pure bash fallback if python3 missing.
-  local d="$1" today="$2"
-  local d_epoch today_epoch
-  d_epoch=$(date -d "$d" +%s 2>/dev/null) || return 0
-  today_epoch=$(date -d "$today" +%s 2>/dev/null) || return 0
-  echo $(( (today_epoch - d_epoch) / 86400 ))
-}
-
-cmd_lint_frontmatter() {
-  local wiki_dir; wiki_dir="$(cmd_config wiki_dir)"
-  local tmpdir; tmpdir="$(mktemp -d)"
-  trap "rm -rf '$tmpdir'" EXIT
-
-  # Build set of all existing wiki page paths (relative, without .md) for link resolution.
-  local existing="$tmpdir/existing.txt"
-  ( cd "$wiki_dir" && find . -type f -name '*.md' \
-      ! -name 'index.md' ! -name 'log.md' \
-      | sed 's|^\./||; s|\.md$||' | sort ) > "$existing"
-
-  # Extract entries from index.md for orphan detection.
-  local index_paths="$tmpdir/index.txt"
-  if [[ -f "$wiki_dir/index.md" ]]; then
-    grep -o '\[\[wiki/[^]]*\]\]' "$wiki_dir/index.md" \
-      | sed 's/^\[\[wiki\///; s/\]\]$//' \
-      | sort -u > "$index_paths" || true
-  else
-    : > "$index_paths"
-  fi
-
-  local findings_dir="$tmpdir/findings"; mkdir -p "$findings_dir"
-
-  # Helper: append a finding as JSON (uses $findings from outer scope).
-  add() {
-    findings=$(echo "$findings" | jq --argjson f "$1" '. + [$f]')
-  }
-
-  # Iterate every candidate page.
-  while IFS= read -r rel; do
-    local file="$wiki_dir/$rel.md"
-    local fm; fm="$(_frontmatter_to_json "$file")"
-    local findings='[]'
-
-    # 1. required fields present?
-    for field in $(_required_fields); do
-      if ! echo "$fm" | jq -e --arg k "$field" 'has($k)' >/dev/null; then
-        add "{\"level\":\"error\",\"rule\":\"missing-field\",\"field\":\"$field\"}"
-      fi
-    done
-
-    # 2. enum checks (only if the field exists)
-    local t; t=$(echo "$fm" | jq -r '.type // empty')
-    if [[ -n "$t" ]] && ! echo " $(_allowed_types) " | grep -q " $t "; then
-      add "{\"level\":\"error\",\"rule\":\"bad-enum\",\"field\":\"type\",\"value\":\"$t\"}"
-    fi
-    local dom; dom=$(echo "$fm" | jq -r '.domain // empty')
-    if [[ -n "$dom" ]] && ! echo " $(_allowed_domains) " | grep -q " $dom "; then
-      add "{\"level\":\"error\",\"rule\":\"bad-enum\",\"field\":\"domain\",\"value\":\"$dom\"}"
-    fi
-    local conf; conf=$(echo "$fm" | jq -r '.confidence // empty')
-    if [[ -n "$conf" ]] && ! echo " $(_allowed_confidence) " | grep -q " $conf "; then
-      add "{\"level\":\"error\",\"rule\":\"bad-enum\",\"field\":\"confidence\",\"value\":\"$conf\"}"
-    fi
-
-    # 3. staleness
-    local upd; upd=$(echo "$fm" | jq -r '.updated // empty')
-    if [[ -n "$upd" && "$conf" != "stale" ]]; then
-      local age; age=$(_days_since "$upd")
-      if [[ -n "$age" && "$age" -gt 90 ]]; then
-        add "{\"level\":\"warn\",\"rule\":\"stale\",\"age_days\":$age}"
-      fi
-    fi
-
-    # 4. orphan (not in index)
-    if ! grep -Fxq "$rel" "$index_paths"; then
-      add "{\"level\":\"warn\",\"rule\":\"orphan\"}"
-    fi
-
-    # 5. broken links
-    local links; links=$(echo "$fm" | jq -r '.links // [] | .[]? // empty')
-    while IFS= read -r link; do
-      [[ -z "$link" ]] && continue
-      local target="${link#wiki/}"
-      if ! grep -Fxq "$target" "$existing"; then
-        add "{\"level\":\"error\",\"rule\":\"broken-link\",\"target\":\"$link\"}"
-      fi
-    done <<< "$links"
-
-    # Only include this page in output if it has findings.
-    if [[ "$findings" != "[]" ]]; then
-      echo "{\"path\":\"wiki/$rel.md\",\"findings\":$findings}" >> "$findings_dir/all.ndjson"
-    fi
-  done < "$existing"
-
-  # Emit a JSON array.
-  if [[ -f "$findings_dir/all.ndjson" ]]; then
-    jq -s '.' "$findings_dir/all.ndjson"
-  else
-    echo "[]"
-  fi
-  rm -rf "$tmpdir"
-}
-
-usage() {
-  cat <<'EOF'
+def usage():
+    print("""\
 loppy — mechanics helper for the Loppy plugin.
 
 Usage:
@@ -410,25 +52,29 @@ Usage:
   loppy index-merge               Merge stdin JSON [{path, summary}...] into wiki/index.md.
   loppy log <op> <title>          Prepend a new log entry (body on stdin).
   loppy lint-frontmatter          Emit JSON findings for every wiki page.
+""")
 
-EOF
-}
 
-main() {
-  local sub="${1:-}"
-  if [[ -z "$sub" || "$sub" == "--help" || "$sub" == "-h" ]]; then
-    usage; return 0
-  fi
-  shift || true
-  case "$sub" in
-    config) cmd_config "$@" ;;
-    next) cmd_next "$@" ;;
-    move) cmd_move "$@" ;;
-    index-merge) cmd_index_merge "$@" ;;
-    log) cmd_log "$@" ;;
-    lint-frontmatter) cmd_lint_frontmatter "$@" ;;
-    *) echo "loppy: unknown subcommand: $sub" >&2; usage >&2; return 1 ;;
-  esac
-}
+def main():
+    args = sys.argv[1:]
+    if not args or args[0] in ("--help", "-h"):
+        usage()
+        return
+    sub, rest = args[0], args[1:]
+    dispatch = {
+        "config": cmd_config,
+        "next": cmd_next,
+        "move": cmd_move,
+        "index-merge": cmd_index_merge,
+        "log": cmd_log,
+        "lint-frontmatter": cmd_lint_frontmatter,
+    }
+    if sub not in dispatch:
+        print(f"loppy: unknown subcommand: {sub}", file=sys.stderr)
+        usage()
+        sys.exit(1)
+    dispatch[sub](rest)
 
-main "$@"
+
+if __name__ == "__main__":
+    main()
