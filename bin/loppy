@@ -234,6 +234,61 @@ def cmd_log(args):
         raise
 
 
+_ALLOWED_TYPES = frozenset(
+    "entity concept source project thought todo worklog".split()
+)
+_ALLOWED_DOMAINS = frozenset(
+    "tech finance business work career hobbies family parenting relationships self".split()
+)
+_ALLOWED_CONFIDENCE = frozenset("high medium low stale".split())
+_REQUIRED_FIELDS = "type title created updated confidence domain tags links".split()
+
+
+def _parse_frontmatter(file: Path) -> dict:
+    """Parse YAML-subset frontmatter into a dict.
+    Supports: scalar values and inline arrays  key: [a, b, c].
+    Does NOT support block sequences (- item).
+    """
+    text = file.read_text(encoding="utf-8")
+    fm: dict = {}
+    inside = False
+    started = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped == "---":
+            if not started:
+                inside = True
+                started = True
+                continue
+            else:
+                break
+        if not inside:
+            continue
+        m = re.match(r"^([A-Za-z_-]+):\s*(.*)", line)
+        if not m:
+            continue
+        key, val = m.group(1), m.group(2).strip()
+        if val.startswith('"') and val.endswith('"'):
+            val = val[1:-1]
+        if val.startswith("[") and val.endswith("]"):
+            inner = val[1:-1].strip()
+            if not inner:
+                fm[key] = []
+            else:
+                fm[key] = [x.strip().strip('"') for x in inner.split(",")]
+        else:
+            fm[key] = val
+    return fm
+
+
+def _days_since(d: str) -> int | None:
+    today_str = os.environ.get("LOPPY_TODAY", date.today().isoformat())
+    try:
+        return (date.fromisoformat(today_str) - date.fromisoformat(d)).days
+    except ValueError:
+        return None
+
+
 def cmd_lint_frontmatter(args): pass
 
 
