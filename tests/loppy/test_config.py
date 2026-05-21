@@ -26,23 +26,28 @@ def test_config_returns_string_value(loppy_env):
     assert result.stdout.strip() == str(vault)
 
 
-def test_config_exits_1_when_config_missing(loppy_env, tmp_path):
+def test_config_exits_1_when_config_missing(loppy_env):
     env, vault = loppy_env
-    # Remove config file
     import os
-    cfg = (tmp_path / "xdg" / "loppy" / "config.json") if os.name != "nt" \
-        else (tmp_path / "appdata" / "loppy" / "config.json")
+    from pathlib import Path
+    if os.name != "nt":
+        cfg = Path(env["XDG_CONFIG_HOME"]) / "loppy" / "config.json"
+    else:
+        cfg = Path(env["APPDATA"]) / "loppy" / "config.json"
     cfg.unlink()
     result = run_loppy("config", env=env)
     assert result.returncode == 1
     assert "config not found" in result.stderr
 
 
-def test_config_exits_1_on_malformed_json(loppy_env, tmp_path):
+def test_config_exits_1_on_malformed_json(loppy_env):
     env, vault = loppy_env
     import os
-    cfg = (tmp_path / "xdg" / "loppy" / "config.json") if os.name != "nt" \
-        else (tmp_path / "appdata" / "loppy" / "config.json")
+    from pathlib import Path
+    if os.name != "nt":
+        cfg = Path(env["XDG_CONFIG_HOME"]) / "loppy" / "config.json"
+    else:
+        cfg = Path(env["APPDATA"]) / "loppy" / "config.json"
     cfg.write_text("not json {{", encoding="utf-8")
     result = run_loppy("config", env=env)
     assert result.returncode == 1
