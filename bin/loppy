@@ -43,6 +43,8 @@ def cmd_config(args):
         print(f"loppy: config key not found: {key}", file=sys.stderr)
         sys.exit(1)
     print(cfg[key])
+
+
 def cmd_next(args): pass
 def cmd_move(args): pass
 def cmd_index_merge(args): pass
