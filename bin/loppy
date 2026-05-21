@@ -232,6 +232,8 @@ def cmd_log(args):
     except Exception:
         tmp.unlink(missing_ok=True)
         raise
+
+
 def cmd_lint_frontmatter(args): pass
 
 
