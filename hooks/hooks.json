@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/guard-vault.sh"
+            "command": "uv run hooks/guard_vault.py"
           }
         ]
       }
