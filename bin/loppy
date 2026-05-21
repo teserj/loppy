@@ -186,7 +186,52 @@ def cmd_index_merge(args):
         raise
 
 
-def cmd_log(args): pass
+def cmd_log(args):
+    if len(args) < 2:
+        print("loppy log: usage: loppy log <op> <title>   (body from stdin)", file=sys.stderr)
+        sys.exit(1)
+    op, title = args[0], args[1]
+    cfg = load_config()
+    wiki_dir = Path(cfg["wiki_dir"])
+    logf = wiki_dir / "log.md"
+    if not logf.exists():
+        print(f"loppy log: {logf} not found", file=sys.stderr)
+        sys.exit(1)
+    today = os.environ.get("LOPPY_TODAY", date.today().isoformat())
+    body = sys.stdin.read().rstrip("\n")
+
+    lines = logf.read_text(encoding="utf-8").splitlines()
+
+    # Find first "---" that appears after first "# " line
+    sep_line = None
+    found_h1 = False
+    for i, line in enumerate(lines):
+        if line.startswith("# "):
+            found_h1 = True
+        elif found_h1 and line == "---":
+            sep_line = i
+            break
+
+    new_entry = f"\n## [{today}] {op} | {title}\n\n{body}\n"
+
+    if sep_line is None:
+        new_content = "\n".join(lines) + "\n" + f"\n---\n{new_entry}"
+    else:
+        header = "\n".join(lines[: sep_line + 1]) + "\n"
+        rest_lines = lines[sep_line + 1 :]
+        rest = "\n".join(rest_lines)
+        if rest:
+            rest += "\n"
+        new_content = header + new_entry + rest
+
+    tmp = wiki_dir / f".tmp_log_{os.getpid()}"
+    try:
+        with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+            f.write(new_content)
+        tmp.replace(logf)
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
 def cmd_lint_frontmatter(args): pass
 
 
