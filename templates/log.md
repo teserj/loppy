@@ -1,10 +1,11 @@
-# Operation Log
+---
+type: log
+title: Wiki Activity Log
+---
 
-Append-only record of all wiki operations: page creation, updates, deletions, ingests, lints.
-Used for audit trail and debugging vault state.
+# Wiki Log
+
+Append-only. New entries at top.
 
 ---
 
-## 2026-04-18T10:00:00Z
-
-vault initialized by Loppy. Ready for ingestion.

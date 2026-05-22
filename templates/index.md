@@ -1,8 +1,19 @@
+---
+type: index
+title: Wiki Index
+updated: 2026-01-01
+---
+
 # Wiki Index
 
-Complete index of all wiki pages, organized by type and domain. Automatically updated by `loppy index-merge`.
+Catalog of all wiki pages. Updated on every ingest. Read this first when answering queries.
 
-| path | title | type | domain | updated |
-|------|-------|------|--------|---------|
+Total pages: 0
 
-**Tip:** Use `loppy query <term>` to search by title, tags, or content.
+## Concepts
+
+## Entities
+
+## Sources
+
+## Topics
