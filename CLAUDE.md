@@ -25,8 +25,8 @@ Loppy is a personal knowledge management plugin implementing Karpathy's LLM Wiki
 - `sources/`: Raw source files (user uploads here)
 - `processed/`: Sources already ingested
 - `wiki/`: Compiled wiki pages with frontmatter
-- `index.md`: TSV index of all pages (auto-updated)
-- `log.md`: Append-only operation log
+  - `index.md`: Index of all pages (auto-updated by `loppy index-merge`)
+  - `log.md`: Append-only operation log (updated by `loppy log`)
 - `wiki-schema.yaml`: Frontmatter schema template
 
 **Config** (`~/.config/loppy/config.json`)
