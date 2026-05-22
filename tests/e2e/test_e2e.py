@@ -1,23 +1,10 @@
 """Lightweight E2E smoke test: ingest a source through the full loppy workflow."""
 import json
-import sys
-import subprocess
-from pathlib import Path
-import pytest
-
-REPO_ROOT = Path(__file__).parent.parent.parent
-LOPPY_BIN = REPO_ROOT / "bin" / "loppy"
-
-
-def run_loppy(*args, env, stdin=None):
-    return subprocess.run(
-        [sys.executable, str(LOPPY_BIN), *args],
-        capture_output=True, text=True, input=stdin, env=env,
-    )
+from conftest import run_loppy
 
 
 def test_full_ingest_workflow(loppy_env):
-    """Smoke test: next → move → index-merge → log → lint-frontmatter."""
+    """Smoke test: next → index-merge → move → log → lint-frontmatter."""
     env, vault = loppy_env
     wiki = vault / "wiki"
     sources = vault / "sources"
@@ -60,12 +47,8 @@ def test_full_ingest_workflow(loppy_env):
     log_content = (wiki / "log.md").read_text(encoding="utf-8")
     assert "ingest | article" in log_content
 
-    # lint-frontmatter — expect no errors for our good page
+    # lint-frontmatter — clean page must produce no findings at all
     r = run_loppy("lint-frontmatter", env=env)
     assert r.returncode == 0
     findings = json.loads(r.stdout)
-    errors = [
-        f for entry in findings if entry["path"].endswith("article.md")
-        for f in entry["findings"] if f["level"] == "error"
-    ]
-    assert errors == []
+    assert findings == [], f"Expected no lint findings, got: {findings}"
