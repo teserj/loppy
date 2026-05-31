@@ -234,7 +234,7 @@ def cmd_log(args):
 
 
 _ALLOWED_TYPES = frozenset(
-    "entity concept source project thought todo worklog".split()
+    "entities concepts sources projects thoughts todos worklogs".split()
 )
 _ALLOWED_DOMAINS = frozenset(
     "tech finance business work career hobbies family parenting relationships self".split()

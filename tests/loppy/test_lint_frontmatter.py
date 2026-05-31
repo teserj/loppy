@@ -5,7 +5,7 @@ from conftest import run_loppy
 
 GOOD_FM = (
     "---\n"
-    "type: concept\n"
+    "type: concepts\n"
     "title: Good Page\n"
     "created: 2026-04-17\n"
     "updated: 2026-04-17\n"
@@ -44,7 +44,7 @@ def _write_page(path: Path, frontmatter: str):
 def test_lint_reports_missing_fields(loppy_env):
     env, vault = loppy_env
     wiki = _setup_lint_env(vault, env)
-    _write_page(wiki / "concepts" / "bad.md", "---\ntype: concept\ntitle: Bad Page\n---")
+    _write_page(wiki / "concepts" / "bad.md", "---\ntype: concepts\ntitle: Bad Page\n---")
     result = run_loppy("lint-frontmatter", env=env)
     assert result.returncode == 0
     findings = json.loads(result.stdout)
@@ -80,7 +80,7 @@ def test_lint_accepts_well_formed_page(loppy_env):
 def test_lint_flags_invalid_type_enum(loppy_env):
     env, vault = loppy_env
     wiki = _setup_lint_env(vault, env)
-    fm = GOOD_FM.replace("type: concept", "type: nonsense").rstrip("\n# body\n")
+    fm = GOOD_FM.replace("type: concepts", "type: nonsense").rstrip("\n# body\n")
     _write_page(wiki / "concepts" / "enum.md", fm)
     result = run_loppy("lint-frontmatter", env=env)
     findings = json.loads(result.stdout)

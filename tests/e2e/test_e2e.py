@@ -22,7 +22,7 @@ def test_full_ingest_workflow(loppy_env):
     (wiki / "concepts").mkdir(exist_ok=True)
     page = wiki / "concepts" / "article.md"
     page.write_text(
-        "---\ntype: concept\ntitle: Article\ncreated: 2026-05-21\n"
+        "---\ntype: concepts\ntitle: Article\ncreated: 2026-05-21\n"
         "updated: 2026-05-21\nconfidence: high\ndomain: tech\ntags: []\nlinks: []\n---\n"
         "# Article\nsome content\n",
         encoding="utf-8",
