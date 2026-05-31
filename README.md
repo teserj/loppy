@@ -1,6 +1,7 @@
 # Loppy
 
-Personal knowledge management plugin implementing Karpathy's LLM Wiki pattern for Claude Code.
+Personal knowledge management plugin implementing Karpathy's LLM Wiki pattern.
+Works with **Claude Code** and **Codex CLI**.
 
 Ingest raw sources (articles, papers, links) into a structured wiki, then query and refine your knowledge using LLM-driven workflows.
 
@@ -8,71 +9,82 @@ Ingest raw sources (articles, papers, links) into a structured wiki, then query 
 
 ### Installation
 
+```bash
+python setup.py
+```
+
+Follow prompts for:
+- Vault directory path (e.g., `~/my-vault`)
+- Sources directory (default: `source`)
+- Wiki directory (default: `wiki`)
+- Git initialization (optional)
+
+Setup installs the `loppy` binary to `~/.local/bin/` and writes hooks for both Claude Code and Codex CLI.
+
+### Claude Code
+
 1. Install Loppy plugin in Claude Code
-2. Run interactive setup:
-   ```bash
-   ./setup.sh
-   ```
-3. Follow prompts for:
-   - Vault directory path (e.g., `~/my-vault`)
-   - Sources directory (default: `source`)
-   - Wiki directory (default: `wiki`)
-   - Git initialization (optional)
-
-### First Ingest
-
-1. Place a raw source (article, link, text) in your `sources/` directory
-2. In Claude Code, run:
+2. Place a raw source in your `sources/` directory
+3. Run:
    ```
    /wiki ingest single
    ```
-3. Follow LLM guidance to:
-   - Review the source
-   - Create a structured wiki page
-   - Update the index
-   - Move source to `processed/`
+
+### Codex CLI
+
+1. Place a raw source in your `sources/` directory
+2. Ask Codex:
+   ```
+   Ingest my next source into the wiki
+   ```
+   Codex reads `AGENTS.md` and follows the ingest workflow using `loppy` CLI commands.
 
 ## Usage
 
 ### Ingest Sources
 
+**Claude Code**:
 ```
 /wiki ingest [mode] [count]
-```
-
-**Single mode** (default): Ingest one source at a time
-```
 /wiki ingest single
+/wiki ingest batch 5
 ```
 
-**Batch mode**: Ingest multiple sources at once
+**Codex** — describe intent naturally:
 ```
-/wiki ingest batch 5
+Ingest the next 3 sources
+Process my sources in batch
 ```
 
 ### Query Knowledge
 
+**Claude Code**:
 ```
 /wiki query <term>
-```
-
-Search your wiki by keyword, tag, type, or domain:
-```
 /wiki query machine learning
 /wiki query type:concepts
 /wiki query domain:tech
 ```
 
+**Codex** — ask naturally:
+```
+What do I know about machine learning?
+Find concepts tagged with llm
+```
+
 ### Validate Schema
 
+**Claude Code**:
 ```
 /wiki lint [page]
+/wiki lint                  # all pages
+/wiki lint wiki/topics/llm  # specific page
 ```
 
-Check all wiki pages for schema compliance:
+**Codex**:
 ```
-/wiki lint                  # Check all pages
-/wiki lint wiki/topics/llm  # Check specific page
+Lint the wiki
+Check wiki/topics/llm for schema errors
 ```
 
 ## Architecture
@@ -97,7 +109,7 @@ Check all wiki pages for schema compliance:
 ### Data Flow
 
 ```
-[Raw Source] 
+[Raw Source]
     ↓
 [LLM Read + Analysis]
     ↓
@@ -114,44 +126,45 @@ Check all wiki pages for schema compliance:
 
 ```
 vault-dir/
-├── sources/           # Raw sources before ingestion
+├── source/            # Raw sources before ingestion
 ├── processed/         # Ingested sources (archive)
 ├── wiki/              # Compiled wiki pages
 │   ├── index.md       # Page index (auto-updated)
 │   ├── log.md         # Operation audit log
-│   ├── wiki-schema.yaml  # Frontmatter schema
 │   └── topics/
 │       ├── machine-learning.md
 │       └── llm-patterns.md
-├── .git/              # Optional git repo
-└── config.json        # (Backed up, edited via setup.sh)
+├── wiki-schema.yaml   # Frontmatter schema
+└── .git/              # Optional git repo
 ```
+
+Config stored separately at `~/.config/loppy/config.json` (XDG).
 
 ## Configuration
 
-Config stored in `~/.config/loppy/config.json`:
+`~/.config/loppy/config.json`:
 
 ```json
 {
   "vault_dir": "/home/user/my-vault",
-  "sources_dir": "/home/user/my-vault/sources",
+  "sources_dir": "/home/user/my-vault/source",
   "wiki_dir": "/home/user/my-vault/wiki",
   "batch_size": 5
 }
 ```
 
-Edit by running `setup.sh` again or manually editing the JSON file.
+Re-run `python setup.py` or edit the JSON directly to change paths.
 
 ## Commands Reference
 
 | Command | Purpose |
 |---------|---------|
 | `loppy config` | Display current configuration |
-| `loppy next N` | List N unprocessed sources |
-| `loppy move SRC DEST` | Move source to processed/ |
+| `loppy next [N]` | List N unprocessed sources (absolute paths) |
+| `loppy move <src>` | Move source to `processed/` subdir |
 | `loppy index-merge` | Update index.md from stdin JSON |
-| `loppy log TITLE DETAILS` | Append entry to log.md |
-| `loppy lint-frontmatter` | Validate all wiki pages |
+| `loppy log <title> <detail>` | Prepend entry to log.md |
+| `loppy lint-frontmatter` | Validate all wiki pages, return JSON findings |
 
 ## Frontmatter Schema
 
@@ -186,7 +199,7 @@ links: [wiki/concepts/llm-wiki-pattern, wiki/entities/karpathy]
 
 ### Config not found
 
-Run `setup.sh` to create `~/.config/loppy/config.json`
+Run `python setup.py` to create `~/.config/loppy/config.json`.
 
 ### No sources showing
 
@@ -197,7 +210,7 @@ Check that:
 
 ### Lint errors
 
-Run `/wiki lint` to see specific issues:
+Run `/wiki lint` (Claude Code) or ask Codex to lint:
 - Missing required fields
 - Invalid enum values
 - Links to non-existent pages
@@ -205,7 +218,7 @@ Run `/wiki lint` to see specific issues:
 
 ### Git history lost
 
-Always use `loppy move` (which calls git mv) instead of direct `mv` commands.
+Always use `loppy move` (which calls `git mv`) instead of direct `mv` commands.
 
 ## Design Principles
 
@@ -218,7 +231,7 @@ Always use `loppy move` (which calls git mv) instead of direct `mv` commands.
 
 ## Inspiration
 
-Based on Andrej Karpathy's [LLM-Managed Knowledge Graphs](https://gist.github.com/karpathy/8703956) pattern, adapted for Claude Code and extended with Gökçe's L1/L2 cache optimization.
+Based on Andrej Karpathy's [LLM-Managed Knowledge Graphs](https://gist.github.com/karpathy/8703956) pattern, adapted for Claude Code and Codex CLI, extended with Gökçe's L1/L2 cache optimization.
 
 ## License
 
