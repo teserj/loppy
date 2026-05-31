@@ -107,7 +107,17 @@ def main():
     else:
         print("Git repository already exists")
 
+    codex_dir = SCRIPT_DIR / ".codex"
+    codex_dir.mkdir(exist_ok=True)
+    codex_hooks = codex_dir / "hooks.json"
+    src_hooks = SCRIPT_DIR / "hooks" / "hooks.json"
+    if src_hooks.exists():
+        shutil.copy(src_hooks, codex_hooks)
+        print(f"Codex hooks installed: {codex_hooks}")
+    else:
+        print(RED("Warning: hooks/hooks.json not found, skipping Codex hook setup"))
     print()
+
     print(GREEN("=== Setup Complete ==="))
     print(f"Vault:  {vault_dir}")
     print(f"Config: {cfg_file}")
