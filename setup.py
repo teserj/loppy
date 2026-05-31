@@ -107,15 +107,37 @@ def main():
     else:
         print("Git repository already exists")
 
-    codex_dir = SCRIPT_DIR / ".codex"
-    codex_dir.mkdir(exist_ok=True)
-    codex_hooks = codex_dir / "hooks.json"
-    src_hooks = SCRIPT_DIR / "hooks" / "hooks.json"
-    if src_hooks.exists():
-        shutil.copy(src_hooks, codex_hooks)
+    guard_script = SCRIPT_DIR / "hooks" / "guard_vault.py"
+    if guard_script.exists():
+        codex_cfg_dir = Path.home() / ".codex"
+        codex_cfg_dir.mkdir(exist_ok=True)
+        codex_hooks = codex_cfg_dir / "hooks.json"
+        codex_hooks.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "PreToolUse": [
+                            {
+                                "matcher": "Bash",
+                                "hooks": [
+                                    {
+                                        "type": "command",
+                                        "command": f"uv run {guard_script}",
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
         print(f"Codex hooks installed: {codex_hooks}")
+        shutil.copy(SCRIPT_DIR / "AGENTS.md", vault_dir / "AGENTS.md")
+        print(f"AGENTS.md copied to vault: {vault_dir / 'AGENTS.md'}")
     else:
-        print(RED("Warning: hooks/hooks.json not found, skipping Codex hook setup"))
+        print(RED("Warning: hooks/guard_vault.py not found, skipping Codex setup"))
     print()
 
     print(GREEN("=== Setup Complete ==="))
