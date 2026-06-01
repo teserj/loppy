@@ -31,25 +31,6 @@ If config missing, run `python setup.py` first.
 
 **Never use `rm`, `mv`, `rmdir` on vault paths directly.** Use `loppy move` and `loppy log` instead.
 
-## Frontmatter Schema
-
-All wiki pages require this YAML frontmatter block:
-
-```yaml
----
-type: <entities|concepts|sources|projects|thoughts|todos|worklogs>
-title: "<descriptive title>"
-created: <YYYY-MM-DD>
-updated: <YYYY-MM-DD>
-confidence: <high|medium|low>
-domain: <tech|finance|business|work|career|hobbies|family|parenting|relationships|self>
-tags: [tag1, tag2]
-links: [wiki/path/to/related-page]
----
-```
-
-Pages live at `wiki/<type>/<slug>.md` relative to `wiki_dir`.
-
 ## Workflows
 
 ### Ingest Sources
@@ -57,17 +38,18 @@ Pages live at `wiki/<type>/<slug>.md` relative to `wiki_dir`.
 User intent: "ingest", "process sources", "import"
 
 1. Run `loppy config` to get paths and `batch_size`.
-2. Run `loppy next <count>` — prints absolute paths of unprocessed sources.
+2. Read `<vault_dir>/wiki-schema.yaml` to get the current frontmatter schema (required fields and valid enum values).
+3. Run `loppy next <count>` — prints absolute paths of unprocessed sources.
    - If empty, report "No unprocessed sources found" and stop.
-3. For each source path:
+4. For each source path:
    a. Read the file content.
    b. Extract key knowledge: facts, concepts, entities, relationships.
-   c. Create `wiki/<type>/<slug>.md` with schema-compliant frontmatter + body.
+   c. Create `wiki/<type>/<slug>.md` with frontmatter matching the schema exactly.
    d. Update index:
       ```bash
       echo '[{"path":"wiki/<type>/<slug>.md","summary":"<one-line summary>"}]' | loppy index-merge
       ```
-   e. Move source (pass exact absolute path from step 2, no second arg):
+   e. Move source (pass exact absolute path from step 3, no second arg):
       ```bash
       loppy move "/absolute/path/to/source.md"
       ```
@@ -75,7 +57,7 @@ User intent: "ingest", "process sources", "import"
       ```bash
       loppy log "Ingested <title>" "Created wiki/<type>/<slug>.md from <source>"
       ```
-4. Report pages created and any issues.
+5. Report pages created and any issues.
 
 ### Query Wiki
 

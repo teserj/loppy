@@ -84,12 +84,14 @@ Invoke by describing intent naturally. Claude Code reads this file and follows t
 ### Ingest
 User intent: "ingest", "process sources", "import" — mode: single (default) or batch [N]
 
-1. Run `loppy next <count>` to list unprocessed sources (absolute paths).
-2. Read each source file.
-3. Create wiki page at `wiki/<type>/<slug>.md` with schema-compliant frontmatter.
-4. Update index: `echo '[{"path":"...","summary":"..."}]' | loppy index-merge`
-5. Move source: `loppy move "/absolute/path/to/source.md"`
-6. Log: `loppy log "Ingested <title>" "Created wiki/<type>/<slug>.md from <source>"`
+1. Run `loppy config` to get paths and `batch_size`.
+2. Read `<vault_dir>/wiki-schema.yaml` to get the current frontmatter schema (required fields and valid enum values).
+3. Run `loppy next <count>` to list unprocessed sources (absolute paths).
+4. Read each source file.
+5. Create wiki page at `wiki/<type>/<slug>.md` with frontmatter matching the schema exactly.
+6. Update index: `echo '[{"path":"...","summary":"..."}]' | loppy index-merge`
+7. Move source: `loppy move "/absolute/path/to/source.md"`
+8. Log: `loppy log "Ingested <title>" "Created wiki/<type>/<slug>.md from <source>"`
 
 ### Query
 User intent: "search", "find", "look up", "what do I know about"
