@@ -146,7 +146,11 @@ def main():
                                 "hooks": [
                                     {
                                         "type": "command",
-                                        "command": f'"{uv_path}" run "{guard_script}"',
+                                        "command": (
+                                            f'python "{guard_script}"'
+                                            if os.name == "nt"
+                                            else f'"{uv_path}" run "{guard_script}"'
+                                        ),
                                     }
                                 ],
                             }
