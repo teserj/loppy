@@ -81,9 +81,14 @@ def main():
         else:
             shutil.copy(tmpl_dir / "wiki-schema.yaml", schema_dst)
             print("wiki-schema.yaml copied to vault")
-        shutil.copy(tmpl_dir / "index.md", wiki_abs / "index.md")
-        shutil.copy(tmpl_dir / "log.md",   wiki_abs / "log.md")
-        print("Templates copied to vault")
+        for fname in ("index.md", "log.md"):
+            dst = wiki_abs / fname
+            if not dst.exists():
+                shutil.copy(tmpl_dir / fname, dst)
+                print(f"{fname} created in wiki")
+            else:
+                print(f"{fname} already exists, skipping")
+        print("Templates applied")
     else:
         print(RED("Warning: templates directory not found"))
     print()
