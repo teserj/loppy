@@ -1,9 +1,0 @@
-{
-  "name": "loppy",
-  "description": "Personal knowledge management plugin implementing Karpathy's LLM Wiki pattern. Ingests sources, compiles wikis, provides LLM-driven knowledge retrieval.",
-  "version": "0.1.1",
-  "author": {
-    "name": "Kodva"
-  },
-  "license": "Apache-2.0"
-}
