@@ -18,14 +18,14 @@ def check(label: str, ok: bool) -> bool:
 
 
 def main():
-    print("=== Loppy Plugin Validation ===\n")
+    print("=== Loppy Validation ===\n")
     errors = 0
 
     # Check 1: Essential files
     print("Check 1: Essential files exist")
     required = [
-        "setup.py", "bin/loppy", "CLAUDE.md", "README.md",
-        ".claude-plugin/plugin.json", "hooks/guard_vault.py",
+        "setup.py", "bin/loppy", "CLAUDE.md", "AGENTS.md", "README.md",
+        "hooks/guard_vault.py", "hooks/hooks.json",
     ]
     for f in required:
         if not check(f, (ROOT / f).is_file()):
@@ -35,7 +35,7 @@ def main():
     # Check 2: Test count
     print("Check 2: Test coverage")
     result = subprocess.run(
-        [sys.executable, "-m", "pytest", "--collect-only", "-q", str(ROOT / "tests")],
+        ["uv", "run", "python", "-m", "pytest", "--collect-only", "-q", str(ROOT / "tests")],
         capture_output=True, text=True, cwd=ROOT,
     )
     test_count = result.stdout.count("::test_")
@@ -43,23 +43,28 @@ def main():
         errors += 1
     print()
 
-    # Check 3: Plugin manifest
-    print("Check 3: Plugin manifest validation")
-    manifest_path = ROOT / ".claude-plugin" / "plugin.json"
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        check("plugin.json valid JSON", True)
-        for field in ["name", "version", "description", "author"]:
-            if not check(f"plugin.json has .{field}", field in manifest):
+    # Check 3: Agent instruction files
+    print("Check 3: Agent instruction files")
+    for doc, sections in [
+        ("CLAUDE.md", ["## Scope", "## Bin Commands", "## Slash Commands"]),
+        ("AGENTS.md", ["## CLI Reference", "## Workflows", "### Ingest Sources"]),
+    ]:
+        content = (ROOT / doc).read_text(encoding="utf-8")
+        for section in sections:
+            if not check(f"{doc} has '{section}'", section in content):
                 errors += 1
+    hooks_path = ROOT / "hooks" / "hooks.json"
+    try:
+        json.loads(hooks_path.read_text(encoding="utf-8"))
+        check("hooks/hooks.json valid JSON", True)
     except Exception as e:
-        check(f"plugin.json readable: {e}", False)
+        check(f"hooks/hooks.json readable: {e}", False)
         errors += 1
     print()
 
     # Check 4: Documentation
     print("Check 4: Documentation completeness")
-    for doc, section in [("CLAUDE.md", "## Scope"), ("README.md", "## Architecture")]:
+    for doc, section in [("README.md", "## Architecture"), ("README.md", "### Codex CLI")]:
         content = (ROOT / doc).read_text(encoding="utf-8")
         if not check(f"{doc} has '{section}'", section in content):
             errors += 1
