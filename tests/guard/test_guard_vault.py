@@ -117,7 +117,10 @@ def test_guard_allows_write_tool(guard_env):
 def test_guard_fails_open_when_config_missing(guard_env, tmp_path):
     env, vault = guard_env
     no_config_env = dict(env)
-    no_config_env["XDG_CONFIG_HOME"] = str(tmp_path / "empty_xdg")
+    if os.name == "nt":
+        no_config_env["APPDATA"] = str(tmp_path / "empty_appdata")
+    else:
+        no_config_env["XDG_CONFIG_HOME"] = str(tmp_path / "empty_xdg")
     r = run_guard({"tool": "bash", "command": f"rm -rf {vault}/file.md"}, no_config_env)
     assert r.returncode == 0
     assert r.stdout.strip() == "PASS"
@@ -273,6 +276,15 @@ def test_guard_codex_blocks_rm_targeting_vault(guard_env):
     result = json.loads(r.stdout)
     assert result["decision"] == "block"
     assert "loppy move" in result["reason"]
+
+
+def test_guard_codex_blocks_canonical_bash_tool_name(guard_env):
+    env, vault = guard_env
+    payload = {"tool_name": "Bash", "tool_input": {"command": f"rm -rf {vault}/file.md"}}
+    r = run_guard(payload, env)
+    assert r.returncode == 0
+    result = json.loads(r.stdout)
+    assert result["decision"] == "block"
 
 
 def test_guard_codex_blocks_remove_item_targeting_vault(guard_env):

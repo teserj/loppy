@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 CLAUDE_SHELL_TOOLS = {"bash", "powershell", "cmd"}
-CODEX_SHELL_TOOLS = {"shell", "shell_command"}
+CODEX_SHELL_TOOLS = {"Bash", "shell", "shell_command"}
 
 
 def config_path() -> Path:
