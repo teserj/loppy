@@ -5,12 +5,10 @@ description: Ingest raw sources from the vault into structured wiki pages. Use w
 
 # Ingest Skill
 
-Arguments: `$ARGUMENTS` (optional: `single` or `batch [N]`, default: `single`)
-
-Parse `$ARGUMENTS`:
-- Empty or `single` → ingest 1 source
-- `batch` → ingest batch_size sources (from config)
-- `batch N` → ingest N sources
+Read the user's request to determine mode:
+- No mode specified or "single" → ingest 1 source
+- "batch" → ingest batch_size sources (from config)
+- "batch N" → ingest N sources
 
 ## Workflow
 

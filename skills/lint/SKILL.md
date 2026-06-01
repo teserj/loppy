@@ -5,13 +5,15 @@ description: Validate wiki page frontmatter schema and fix issues. Use when the 
 
 # Lint Skill
 
-Arguments: `$ARGUMENTS` (optional: specific page path to lint, default: all pages)
+Read the user's request to determine scope:
+- No page specified → lint all pages
+- Page path specified → lint only that page
 
 ## Workflow
 
 1. **Run lint**: Execute `loppy lint-frontmatter` to get JSON findings array.
 
-2. **Filter** (if `$ARGUMENTS` provided): Keep only findings for pages matching the argument.
+2. **Filter** (if a specific page was requested): Keep only findings for pages matching that path.
 
 3. **Categorize findings**:
    - `missing_field`: Required frontmatter field absent

@@ -5,9 +5,8 @@ description: Query the wiki knowledge base to find and synthesize information. U
 
 # Query Skill
 
-Arguments: `$ARGUMENTS` (required: search term, tag, type filter, or domain filter)
-
-If `$ARGUMENTS` is empty, ask the user what to search for.
+Read the search term, tag, type filter, or domain filter from the user's request.
+If no search term is clear, ask the user what to search for.
 
 ## Workflow
 
@@ -15,7 +14,7 @@ If `$ARGUMENTS` is empty, ask the user what to search for.
 
 2. **Read index**: Read `<wiki_dir>/index.md` to get the page index.
 
-3. **Search**: Find pages matching `$ARGUMENTS`:
+3. **Search**: Find pages matching the search term:
    - Match against path, title, type, domain, tags (case-insensitive)
    - Filters: `type:<value>`, `domain:<value>`, `tag:<value>` narrow results
    - Plain terms match anywhere in path or title
