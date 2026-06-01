@@ -70,9 +70,19 @@ def main():
 
     tmpl_dir = SCRIPT_DIR / "templates"
     if tmpl_dir.is_dir():
-        shutil.copy(tmpl_dir / "wiki-schema.yaml", vault_dir / "wiki-schema.yaml")
-        shutil.copy(tmpl_dir / "index.md",         wiki_abs / "index.md")
-        shutil.copy(tmpl_dir / "log.md",           wiki_abs / "log.md")
+        schema_dst = vault_dir / "wiki-schema.yaml"
+        if schema_dst.exists():
+            answer = input("wiki-schema.yaml already exists in vault. Overwrite? (y/n): ").strip().lower()
+            if answer.startswith("y"):
+                shutil.copy(tmpl_dir / "wiki-schema.yaml", schema_dst)
+                print("wiki-schema.yaml overwritten")
+            else:
+                print("wiki-schema.yaml kept unchanged")
+        else:
+            shutil.copy(tmpl_dir / "wiki-schema.yaml", schema_dst)
+            print("wiki-schema.yaml copied to vault")
+        shutil.copy(tmpl_dir / "index.md", wiki_abs / "index.md")
+        shutil.copy(tmpl_dir / "log.md",   wiki_abs / "log.md")
         print("Templates copied to vault")
     else:
         print(RED("Warning: templates directory not found"))
