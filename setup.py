@@ -79,22 +79,28 @@ def main():
     print()
 
     print("Installing loppy binary...")
-    home = Path(os.environ.get("HOME", str(Path.home())))
-    bin_dir = home / ".local" / "bin"
+    if os.name == "nt":
+        local_app_data = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+        bin_dir = local_app_data / "Programs" / "loppy"
+    else:
+        bin_dir = Path(os.environ.get("HOME", str(Path.home()))) / ".local" / "bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
 
     src_bin = SCRIPT_DIR / "bin" / "loppy"
     if src_bin.exists():
         if os.name == "nt":
-            dest = bin_dir / "loppy.cmd"
             src_cmd = SCRIPT_DIR / "bin" / "loppy.cmd"
+            dest = bin_dir / "loppy.cmd"
             if src_cmd.exists():
                 shutil.copy(src_cmd, dest)
+                shutil.copy(src_bin, bin_dir / "loppy")
         else:
             dest = bin_dir / "loppy"
             shutil.copy(src_bin, dest)
             dest.chmod(dest.stat().st_mode | 0o111)
         print(f"Binary installed: {dest}")
+        if os.name == "nt":
+            print(f"  Add to PATH: {bin_dir}")
     else:
         print(RED("Warning: bin/loppy not found"))
     print()
