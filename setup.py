@@ -94,7 +94,7 @@ def main():
             loppy_script = bin_dir / "loppy"
             shutil.copy(src_bin, loppy_script)
             dest.write_text(
-                f'@echo off\n"{uv_path}" run "%~dp0loppy" %*\n',
+                f'@echo off\n"{uv_path}" run python "%~dp0loppy" %*\n',
                 encoding="utf-8",
             )
         else:
