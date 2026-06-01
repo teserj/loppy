@@ -79,6 +79,7 @@ def main():
     print()
 
     print("Installing loppy binary...")
+    uv_path = shutil.which("uv") or "uv"
     if os.name == "nt":
         local_app_data = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
         bin_dir = local_app_data / "Programs" / "loppy"
@@ -89,11 +90,13 @@ def main():
     src_bin = SCRIPT_DIR / "bin" / "loppy"
     if src_bin.exists():
         if os.name == "nt":
-            src_cmd = SCRIPT_DIR / "bin" / "loppy.cmd"
             dest = bin_dir / "loppy.cmd"
-            if src_cmd.exists():
-                shutil.copy(src_cmd, dest)
-                shutil.copy(src_bin, bin_dir / "loppy")
+            loppy_script = bin_dir / "loppy"
+            shutil.copy(src_bin, loppy_script)
+            dest.write_text(
+                f'@echo off\n"{uv_path}" run "%~dp0loppy" %*\n',
+                encoding="utf-8",
+            )
         else:
             dest = bin_dir / "loppy"
             shutil.copy(src_bin, dest)
@@ -128,7 +131,7 @@ def main():
                                 "hooks": [
                                     {
                                         "type": "command",
-                                        "command": f"uv run {guard_script}",
+                                        "command": f'"{uv_path}" run "{guard_script}"',
                                     }
                                 ],
                             }
