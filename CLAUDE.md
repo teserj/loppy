@@ -1,4 +1,4 @@
-# Loppy Plugin for Claude Code
+# Loppy for Claude Code
 
 ## Scope
 
@@ -22,9 +22,9 @@ Loppy is a personal knowledge management plugin implementing Karpathy's LLM Wiki
 ### Data Model
 
 **Vault Directory** (`vault_dir`)
-- `sources/`: Raw source files (user uploads here)
-- `processed/`: Sources already ingested
-- `wiki/`: Compiled wiki pages with frontmatter
+- `<sources_dir>/`: Raw source files (user uploads here; path set in config)
+- `<sources_dir>/processed/`: Sources already ingested
+- `<wiki_dir>/`: Compiled wiki pages with frontmatter
   - `index.md`: Index of all pages (auto-updated by `loppy index-merge`)
   - `log.md`: Append-only operation log (updated by `loppy log`)
 - `wiki-schema.yaml`: Frontmatter schema template
@@ -47,11 +47,11 @@ All commands map to `bin/loppy <subcommand>`:
 Display current configuration. No side effects.
 
 ### loppy next [N]
-List next N unprocessed sources (find `sources/` -maxdepth 1, exclude `processed/`).
+List next N unprocessed sources from `sources_dir` (excludes `processed/` subdir).
 Used by `/wiki ingest` to show LLM what to process next.
 
-### loppy move SOURCE DEST
-Move source from `sources/SOURCE` to `sources/DEST`. If vault is git repo, uses git mv for history.
+### loppy move SOURCE
+Move source file (absolute path) to `sources_dir/processed/`. If vault is git repo, uses git mv for history.
 Used by LLM after ingesting a source to mark it as processed.
 
 ### loppy index-merge
@@ -106,7 +106,7 @@ Validate wiki schema.
 3. Display findings
 4. LLM can fix issues
 
-## Guard Hook (guard-vault.sh)
+## Guard Hook (guard_vault.py)
 
 **Event**: PreToolUse
 **Tools**: bash
@@ -127,11 +127,11 @@ Validate wiki schema.
 **Config must exist**: Plugin fails gracefully if `~/.config/loppy/config.json` missing.
 
 **Vault structure assumed**:
-- `sources/` exists and contains raw files
-- `wiki/` exists and contains compiled pages with frontmatter
-- `index.md` exists (created by setup.sh)
-- `log.md` exists (created by setup.sh)
-- `wiki-schema.yaml` exists (created by setup.sh)
+- `sources_dir/` exists and contains raw files
+- `wiki_dir/` exists and contains compiled pages with frontmatter
+- `index.md` exists (created by setup.py)
+- `log.md` exists (created by setup.py)
+- `wiki-schema.yaml` exists (created by setup.py)
 
 **Page path uniqueness**: Wiki pages identified by relative path from wiki_dir. No two pages should have same path.
 
@@ -142,17 +142,16 @@ Validate wiki schema.
 ## Testing
 
 **Unit tests** (`tests/`):
-- `tests/loppy/`: Bin command tests (40 tests)
-- `tests/guard/`: Guard hook tests (18 tests)
-- `tests/templates/`: Template tests (10 tests)
-- `tests/setup/`: setup.sh tests (11 tests)
-- `tests/manifest/`: plugin.json tests (16 tests)
-- `tests/commands/`: /wiki slash command tests (7 tests)
-- `tests/docs/`: Documentation tests (10 tests)
+- `tests/loppy/`: Bin command tests
+- `tests/guard/`: Guard hook tests
+- `tests/templates/`: Template tests
+- `tests/setup/`: setup.py tests
+- `tests/commands/`: /wiki slash command tests
+- `tests/docs/`: Documentation tests
 
 **E2E protocol** (manual or CI):
-1. Run setup.sh with test vault paths
-2. Place test source in sources/
+1. Run setup.py with test vault paths
+2. Place test source in sources_dir/
 3. Ingest via /wiki ingest single
 4. Verify page created in wiki/
 5. Query via /wiki query and verify results
@@ -173,7 +172,6 @@ Validate wiki schema.
 - **Config**: `~/.config/loppy/config.json` (XDG standard)
 - **Vault**: Obsidian-compatible directory structure
 - **CLI**: All commands exposed via `bin/loppy`
-- **Plugin**: Registered in Claude Code plugin manifest
 - **Schema**: YAML frontmatter on all wiki pages
 - **Index**: TSV format for programmatic access
 - **Log**: Markdown append-only for human readability and git audit trail
