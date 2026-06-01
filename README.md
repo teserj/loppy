@@ -10,6 +10,8 @@ Ingest raw sources (articles, papers, links) into a structured wiki, then query 
 ### Installation
 
 ```bash
+git clone https://github.com/teserj/loppy.git
+cd loppy
 python setup.py
 ```
 
@@ -20,24 +22,45 @@ Follow prompts for:
 - Git initialization (optional)
 
 Setup installs the `loppy` binary to `~/.local/bin/` and writes hooks for both Claude Code and Codex CLI.
+Ensure `~/.local/bin` is in your `PATH`:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
 
 ### Claude Code
 
-1. Install Loppy plugin in Claude Code
-2. Place a raw source in your `sources/` directory
-3. Run:
-   ```
-   /wiki ingest single
-   ```
+Run Claude Code from your vault directory:
+
+```bash
+cd ~/my-vault
+claude
+```
+
+Claude Code picks up `CLAUDE.md` and `skills/` automatically. Use slash commands:
+
+```
+/wiki ingest single
+/wiki query <term>
+/wiki lint
+```
 
 ### Codex CLI
 
-1. Place a raw source in your `sources/` directory
-2. Ask Codex:
-   ```
-   Ingest my next source into the wiki
-   ```
-   Codex reads `AGENTS.md` and follows the ingest workflow using `loppy` CLI commands.
+Run Codex from your vault directory:
+
+```bash
+cd ~/my-vault
+codex
+```
+
+Codex picks up `AGENTS.md` and `skills/` automatically. Guard hook is registered globally at `~/.codex/hooks.json`.
+Invoke skills explicitly or describe intent naturally:
+
+```
+$wiki-ingest
+Ingest my next source into the wiki
+```
 
 ## Usage
 
