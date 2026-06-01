@@ -163,3 +163,100 @@ def test_guard_blocks_rm_with_sources_path(guard_env):
     r = run_guard({"tool": "bash", "command": f"rm {sources}/file.md"}, env)
     assert r.returncode == 2
     assert "BLOCK" in r.stdout
+
+
+# Windows CMD
+
+
+def test_guard_blocks_del_targeting_vault(guard_env):
+    env, vault = guard_env
+    r = run_guard({"tool": "cmd", "command": f"del {vault}\\file.md"}, env)
+    assert r.returncode == 2
+    assert "BLOCK" in r.stdout
+
+
+def test_guard_blocks_erase_targeting_vault(guard_env):
+    env, vault = guard_env
+    r = run_guard({"tool": "cmd", "command": f"erase {vault}\\file.md"}, env)
+    assert r.returncode == 2
+    assert "BLOCK" in r.stdout
+
+
+def test_guard_blocks_rd_targeting_vault(guard_env):
+    env, vault = guard_env
+    r = run_guard({"tool": "cmd", "command": f"rd /s /q {vault}\\subdir"}, env)
+    assert r.returncode == 2
+    assert "BLOCK" in r.stdout
+
+
+def test_guard_blocks_move_targeting_vault(guard_env):
+    env, vault = guard_env
+    r = run_guard({"tool": "cmd", "command": f"move {vault}\\a.md {vault}\\b.md"}, env)
+    assert r.returncode == 2
+    assert "BLOCK" in r.stdout
+
+
+def test_guard_blocks_windows_env_var_vault(guard_env):
+    env, vault = guard_env
+    r = run_guard({"tool": "cmd", "command": "del %VAULT_DIR%\\file.md"}, env)
+    assert r.returncode == 2
+    assert "BLOCK" in r.stdout
+
+
+# PowerShell
+
+
+def test_guard_blocks_remove_item_targeting_vault(guard_env):
+    env, vault = guard_env
+    r = run_guard({"tool": "powershell", "command": f"Remove-Item -Path {vault}/file.md"}, env)
+    assert r.returncode == 2
+    assert "BLOCK" in r.stdout
+
+
+def test_guard_blocks_remove_item_uppercase_targeting_vault(guard_env):
+    env, vault = guard_env
+    r = run_guard({"tool": "powershell", "command": f"REMOVE-ITEM {vault}/file.md"}, env)
+    assert r.returncode == 2
+    assert "BLOCK" in r.stdout
+
+
+def test_guard_blocks_move_item_targeting_vault(guard_env):
+    env, vault = guard_env
+    r = run_guard({"tool": "powershell", "command": f"Move-Item {vault}/a.md {vault}/b.md"}, env)
+    assert r.returncode == 2
+    assert "BLOCK" in r.stdout
+
+
+def test_guard_blocks_ri_alias_targeting_vault(guard_env):
+    env, vault = guard_env
+    r = run_guard({"tool": "powershell", "command": f"ri {vault}/file.md"}, env)
+    assert r.returncode == 2
+    assert "BLOCK" in r.stdout
+
+
+def test_guard_blocks_mi_alias_targeting_vault(guard_env):
+    env, vault = guard_env
+    r = run_guard({"tool": "powershell", "command": f"mi {vault}/a.md {vault}/b.md"}, env)
+    assert r.returncode == 2
+    assert "BLOCK" in r.stdout
+
+
+def test_guard_blocks_powershell_env_var_vault(guard_env):
+    env, vault = guard_env
+    r = run_guard({"tool": "powershell", "command": "Remove-Item $env:VAULT_DIR/file.md"}, env)
+    assert r.returncode == 2
+    assert "BLOCK" in r.stdout
+
+
+def test_guard_allows_powershell_read_outside_vault(guard_env):
+    env, vault = guard_env
+    r = run_guard({"tool": "powershell", "command": "Get-Content /tmp/file.txt"}, env)
+    assert r.returncode == 0
+    assert r.stdout.strip() == "PASS"
+
+
+def test_guard_allows_powershell_loppy_command(guard_env):
+    env, vault = guard_env
+    r = run_guard({"tool": "powershell", "command": "loppy config"}, env)
+    assert r.returncode == 0
+    assert r.stdout.strip() == "PASS"

@@ -5,6 +5,8 @@ import re
 import sys
 from pathlib import Path
 
+SHELL_TOOLS = {"bash", "powershell", "cmd"}
+
 
 def config_path() -> Path:
     if os.name == "nt":
@@ -25,7 +27,7 @@ def main():
         print("PASS")
         sys.exit(0)
 
-    if data.get("tool") != "bash":
+    if data.get("tool") not in SHELL_TOOLS:
         print("PASS")
         sys.exit(0)
 
@@ -61,24 +63,51 @@ def main():
         for path in [vault_dir, sources_dir, wiki_dir]:
             if path and path in cmd:
                 return True
-        return any(v in cmd for v in ["$VAULT_DIR", "$SOURCES_DIR", "$WIKI_DIR"])
+        return any(v in cmd for v in [
+            "$VAULT_DIR", "$SOURCES_DIR", "$WIKI_DIR",
+            "%VAULT_DIR%", "%SOURCES_DIR%", "%WIKI_DIR%",
+            "$env:VAULT_DIR", "$env:SOURCES_DIR", "$env:WIKI_DIR",
+        ])
 
     block_msg = "BLOCK: Destructive operation on vault detected. Use 'loppy move' for file operations."
 
-    if re.search(r"(^|\s)(rm|rmdir|shred|unlink)(\s|-)", command):
-        if vault_referenced(command):
+    def block_if_vault(cmd: str) -> None:
+        if vault_referenced(cmd):
             print(block_msg)
             sys.exit(2)
+
+    # Unix
+    if re.search(r"(^|\s)(rm|rmdir|shred|unlink)(\s|-)", command):
+        block_if_vault(command)
 
     if re.search(r"(^|\s)mv(\s|-)", command):
-        if vault_referenced(command):
-            print(block_msg)
-            sys.exit(2)
+        block_if_vault(command)
 
     if re.search(r"(^|\s)dd(\s|-)", command):
-        if vault_referenced(command):
-            print(block_msg)
-            sys.exit(2)
+        block_if_vault(command)
+
+    # Windows CMD
+    if re.search(r"(^|\s)(del|erase)(\s|/)", command, re.IGNORECASE):
+        block_if_vault(command)
+
+    if re.search(r"(^|\s)(rd|rmdir)(\s|/)", command, re.IGNORECASE):
+        block_if_vault(command)
+
+    if re.search(r"(^|\s)move(\s|/)", command, re.IGNORECASE):
+        block_if_vault(command)
+
+    # PowerShell cmdlets and aliases
+    if re.search(r"(^|\s|;|\|)Remove-Item(\s|-)", command, re.IGNORECASE):
+        block_if_vault(command)
+
+    if re.search(r"(^|\s|;|\|)Move-Item(\s|-)", command, re.IGNORECASE):
+        block_if_vault(command)
+
+    if re.search(r"(^|\s|;|\|)ri(\s|-)", command):
+        block_if_vault(command)
+
+    if re.search(r"(^|\s|;|\|)mi(\s|-)", command):
+        block_if_vault(command)
 
     print("PASS")
     sys.exit(0)
