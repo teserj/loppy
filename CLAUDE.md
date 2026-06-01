@@ -41,7 +41,7 @@ Loppy is a personal knowledge management plugin implementing Karpathy's LLM Wiki
 
 ## Bin Commands
 
-All commands map to `bin/loppy <subcommand>`:
+All commands invoke the installed `loppy` binary (`~/.local/bin/loppy` on Linux/macOS, `%LOCALAPPDATA%\Programs\loppy\loppy.cmd` on Windows):
 
 ### loppy config
 Display current configuration. No side effects.
