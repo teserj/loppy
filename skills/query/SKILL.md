@@ -1,4 +1,5 @@
 ---
+name: wiki-query
 description: Query the wiki knowledge base to find and synthesize information. Use when the user wants to search, look up, or ask questions about knowledge stored in the wiki.
 ---
 

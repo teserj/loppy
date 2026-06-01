@@ -1,4 +1,5 @@
 ---
+name: wiki-ingest
 description: Ingest raw sources from the vault into structured wiki pages. Use when the user wants to process, import, or ingest source files into the wiki.
 ---
 
@@ -18,7 +19,7 @@ Parse `$ARGUMENTS`:
 2. **List sources**: Run `loppy next <count>` to get unprocessed sources. Output is one **absolute path per line** (e.g. `/home/user/vault/sources/Agentic AI Notes.md`). If empty, report "No unprocessed sources found" and stop.
 
 3. **For each source file** (use the exact absolute path from step 2):
-   a. Read the file content (Read tool)
+   a. Read the file content
    b. Extract key knowledge: facts, concepts, entities, relationships
    c. Create a wiki page at `wiki/<type>/<slug>.md` with this exact frontmatter:
       ```yaml

@@ -145,6 +145,14 @@ def main():
         print(f"CLAUDE.md copied to vault: {vault_dir / 'CLAUDE.md'}")
     else:
         print(RED("Warning: CLAUDE.md not found, skipping Claude Code setup"))
+
+    skills_src = SCRIPT_DIR / "skills"
+    if skills_src.is_dir():
+        skills_dst = vault_dir / "skills"
+        if skills_dst.exists():
+            shutil.rmtree(skills_dst)
+        shutil.copytree(skills_src, skills_dst)
+        print(f"Skills copied to vault: {skills_dst}")
     print()
 
     print(GREEN("=== Setup Complete ==="))

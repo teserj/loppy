@@ -1,4 +1,5 @@
 ---
+name: wiki-lint
 description: Validate wiki page frontmatter schema and fix issues. Use when the user wants to check, validate, or fix wiki pages for schema compliance, broken links, or staleness.
 ---
 
@@ -23,7 +24,7 @@ Arguments: `$ARGUMENTS` (optional: specific page path to lint, default: all page
    - **Errors** (missing_field, bad_enum, orphan, broken_link): Must fix
    - **Warnings** (stale): Should review
 
-5. **Offer to fix**: For each fixable issue (missing fields, bad enums, broken links), offer to apply corrections. Apply fixes with Write/Edit tool. Re-run `loppy lint-frontmatter` after fixing to confirm clean.
+5. **Offer to fix**: For each fixable issue (missing fields, bad enums, broken links), offer to apply corrections. Edit the file directly. Re-run `loppy lint-frontmatter` after fixing to confirm clean.
 
 6. **Log**: Run `loppy log "Lint complete" "<N> issues found, <M> fixed"` after finishing.
 
