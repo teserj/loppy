@@ -37,12 +37,12 @@ cd ~/my-vault
 claude
 ```
 
-Claude Code picks up `CLAUDE.md` and `skills/` automatically. Use slash commands:
+Claude Code picks up `CLAUDE.md` automatically. Describe intent naturally:
 
 ```
-/wiki ingest single
-/wiki query <term>
-/wiki lint
+Ingest my next source
+What do I know about machine learning?
+Lint the wiki
 ```
 
 ### Codex CLI
@@ -54,60 +54,39 @@ cd ~/my-vault
 codex
 ```
 
-Codex picks up `AGENTS.md` and `skills/` automatically. Guard hook is registered globally at `~/.codex/hooks.json`.
-Invoke skills explicitly or describe intent naturally:
+Codex picks up `AGENTS.md` automatically. Guard hook is registered globally at `~/.codex/hooks.json`.
+Describe intent naturally:
 
 ```
-$wiki-ingest
-Ingest my next source into the wiki
+Ingest my next source
+What do I know about machine learning?
+Lint the wiki
 ```
 
 ## Usage
 
 ### Ingest Sources
 
-**Claude Code**:
 ```
-/wiki ingest [mode] [count]
-/wiki ingest single
-/wiki ingest batch 5
-```
-
-**Codex** — describe intent naturally:
-```
+Ingest my next source
+Ingest sources in batch
 Ingest the next 3 sources
-Process my sources in batch
 ```
 
 ### Query Knowledge
 
-**Claude Code**:
-```
-/wiki query <term>
-/wiki query machine learning
-/wiki query type:concepts
-/wiki query domain:tech
-```
-
-**Codex** — ask naturally:
 ```
 What do I know about machine learning?
 Find concepts tagged with llm
+Search for domain:tech
 ```
 
 ### Validate Schema
 
-**Claude Code**:
-```
-/wiki lint [page]
-/wiki lint                  # all pages
-/wiki lint wiki/topics/llm  # specific page
-```
-
-**Codex**:
 ```
 Lint the wiki
 Check wiki/topics/llm for schema errors
+Fix frontmatter issues
 ```
 
 ## Architecture
@@ -233,7 +212,7 @@ Check that:
 
 ### Lint errors
 
-Run `/wiki lint` (Claude Code) or ask Codex to lint:
+Ask the LLM to lint the wiki:
 - Missing required fields
 - Invalid enum values
 - Links to non-existent pages

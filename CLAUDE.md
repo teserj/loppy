@@ -48,7 +48,7 @@ Display current configuration. No side effects.
 
 ### loppy next [N]
 List next N unprocessed sources from `sources_dir` (excludes `processed/` subdir).
-Used by `/wiki ingest` to show LLM what to process next.
+Used by ingest workflow to show LLM what to process next.
 
 ### loppy move SOURCE
 Move source file (absolute path) to `sources_dir/processed/`. If vault is git repo, uses git mv for history.
@@ -60,12 +60,12 @@ Read JSON stdin `[{path, summary}, ...]` and merge into `index.md`.
 - Upserts entries (path is key)
 - Detects orphans (pages in wiki not in input)
 - Atomically writes updated index
-Used by `/wiki ingest` after creating new pages.
+Used by ingest workflow after creating new pages.
 
 ### loppy log
 Append timestamped entry to `log.md` with ISO 8601 timestamp.
 Prepends newest entry (newest-first ordering).
-Used by `/wiki ingest` and `/wiki lint` to record operations.
+Used by ingest and lint workflows to record operations.
 
 ### loppy lint-frontmatter
 Validate all wiki pages (except index.md, log.md).
@@ -77,34 +77,37 @@ Checks:
 - Broken links: wikilink targets don't exist
 Returns JSON array of findings: `[{path, field, issue}, ...]`
 
-## Slash Commands
+## Workflows
 
-### /wiki ingest [mode] [count]
-**Mode**: single (default) or batch
-**Count**: number of sources (batch only, default: batch_size)
+Invoke by describing intent naturally. Claude Code reads this file and follows the workflow.
 
-Workflow:
-1. List next N unprocessed sources (`loppy next`)
-2. Display to LLM with guidance
-3. LLM reads source content (Read tool)
-4. LLM creates wiki page with schema-compliant frontmatter
-5. LLM updates index.md via `loppy index-merge` (stdin JSON)
-6. LLM moves source via `loppy move`
-7. LLM appends log entry via `loppy log`
+### Ingest
+User intent: "ingest", "process sources", "import" — mode: single (default) or batch [N]
 
-### /wiki query <term>
-Search wiki by keyword, tag, type, or domain.
-1. Read index.md
-2. Filter by term match (case-insensitive)
-3. Display matching pages
-4. LLM can fetch and synthesize answers
+1. Run `loppy next <count>` to list unprocessed sources (absolute paths).
+2. Read each source file.
+3. Create wiki page at `wiki/<type>/<slug>.md` with schema-compliant frontmatter.
+4. Update index: `echo '[{"path":"...","summary":"..."}]' | loppy index-merge`
+5. Move source: `loppy move "/absolute/path/to/source.md"`
+6. Log: `loppy log "Ingested <title>" "Created wiki/<type>/<slug>.md from <source>"`
 
-### /wiki lint [page]
-Validate wiki schema.
-1. Run `loppy lint-frontmatter`
-2. Filter by page (optional)
-3. Display findings
-4. LLM can fix issues
+### Query
+User intent: "search", "find", "look up", "what do I know about"
+
+1. Run `loppy config` to get `wiki_dir`.
+2. Read `<wiki_dir>/index.md`.
+3. Filter by search term (case-insensitive) against path, title, type, domain, tags.
+4. Read up to 5 matching pages and synthesize a focused answer.
+5. Cite source page paths.
+
+### Lint
+User intent: "lint", "validate", "check schema", "fix frontmatter" — optional: specific page path
+
+1. Run `loppy lint-frontmatter` → JSON array `[{path, field, issue}]`.
+2. Filter by page if requested.
+3. Report errors (missing_field, bad_enum, orphan, broken_link) and warnings (stale).
+4. Fix issues by editing files directly. Re-run to confirm clean.
+5. Log: `loppy log "Lint complete" "<N> issues found, <M> fixed"`
 
 ## Guard Hook (guard_vault.py)
 
@@ -124,7 +127,7 @@ Validate wiki schema.
 
 ## Critical State
 
-**Config must exist**: Plugin fails gracefully if `~/.config/loppy/config.json` missing.
+**Config must exist**: Loppy fails gracefully if `~/.config/loppy/config.json` missing.
 
 **Vault structure assumed**:
 - `sources_dir/` exists and contains raw files
@@ -146,16 +149,16 @@ Validate wiki schema.
 - `tests/guard/`: Guard hook tests
 - `tests/templates/`: Template tests
 - `tests/setup/`: setup.py tests
-- `tests/commands/`: /wiki slash command tests
+- `tests/commands/`: workflow tests
 - `tests/docs/`: Documentation tests
 
 **E2E protocol** (manual or CI):
 1. Run setup.py with test vault paths
 2. Place test source in sources_dir/
-3. Ingest via /wiki ingest single
+3. Run ingest workflow
 4. Verify page created in wiki/
-5. Query via /wiki query and verify results
-6. Run /wiki lint and verify no errors
+5. Run query workflow and verify results
+6. Run lint workflow and verify no errors
 7. Verify index.md and log.md updated
 
 ## Key Guidelines for LLM Operation
