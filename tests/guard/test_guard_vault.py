@@ -260,3 +260,58 @@ def test_guard_allows_powershell_loppy_command(guard_env):
     r = run_guard({"tool": "powershell", "command": "loppy config"}, env)
     assert r.returncode == 0
     assert r.stdout.strip() == "PASS"
+
+
+# Codex payload shape
+
+
+def test_guard_codex_blocks_rm_targeting_vault(guard_env):
+    env, vault = guard_env
+    payload = {"tool_name": "shell_command", "tool_input": {"command": f"rm -rf {vault}/file.md"}}
+    r = run_guard(payload, env)
+    assert r.returncode == 0
+    result = json.loads(r.stdout)
+    assert result["decision"] == "block"
+    assert "loppy move" in result["reason"]
+
+
+def test_guard_codex_blocks_remove_item_targeting_vault(guard_env):
+    env, vault = guard_env
+    payload = {"tool_name": "shell_command", "tool_input": {"command": f"Remove-Item {vault}/file.md"}}
+    r = run_guard(payload, env)
+    assert r.returncode == 0
+    result = json.loads(r.stdout)
+    assert result["decision"] == "block"
+
+
+def test_guard_codex_allows_safe_command(guard_env):
+    env, vault = guard_env
+    payload = {"tool_name": "shell_command", "tool_input": {"command": f"cat {vault}/wiki/page.md"}}
+    r = run_guard(payload, env)
+    assert r.returncode == 0
+    assert r.stdout.strip() == ""
+
+
+def test_guard_codex_allows_non_shell_tool(guard_env):
+    env, vault = guard_env
+    payload = {"tool_name": "read_file", "tool_input": {"path": f"{vault}/wiki/page.md"}}
+    r = run_guard(payload, env)
+    assert r.returncode == 0
+    assert r.stdout.strip() == ""
+
+
+def test_guard_codex_allows_loppy_command(guard_env):
+    env, vault = guard_env
+    payload = {"tool_name": "shell_command", "tool_input": {"command": "loppy config"}}
+    r = run_guard(payload, env)
+    assert r.returncode == 0
+    assert r.stdout.strip() == ""
+
+
+def test_guard_codex_shell_tool_name_variant(guard_env):
+    env, vault = guard_env
+    payload = {"tool_name": "shell", "tool_input": {"command": f"rm {vault}/file.md"}}
+    r = run_guard(payload, env)
+    assert r.returncode == 0
+    result = json.loads(r.stdout)
+    assert result["decision"] == "block"
