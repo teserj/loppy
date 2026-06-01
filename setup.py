@@ -138,6 +138,13 @@ def main():
         print(f"AGENTS.md copied to vault: {vault_dir / 'AGENTS.md'}")
     else:
         print(RED("Warning: hooks/guard_vault.py not found, skipping Codex setup"))
+
+    claude_md = SCRIPT_DIR / "CLAUDE.md"
+    if claude_md.exists():
+        shutil.copy(claude_md, vault_dir / "CLAUDE.md")
+        print(f"CLAUDE.md copied to vault: {vault_dir / 'CLAUDE.md'}")
+    else:
+        print(RED("Warning: CLAUDE.md not found, skipping Claude Code setup"))
     print()
 
     print(GREEN("=== Setup Complete ==="))
