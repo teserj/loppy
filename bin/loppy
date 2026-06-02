@@ -112,7 +112,7 @@ def cmd_index_merge(args):
     today = os.environ.get("LOPPY_TODAY", date.today().isoformat())
 
     try:
-        payload = json.load(sys.stdin)
+        payload = json.loads(sys.stdin.buffer.read().decode("utf-8"))
     except json.JSONDecodeError:
         print("loppy index-merge: stdin is not valid JSON", file=sys.stderr)
         sys.exit(1)
@@ -197,7 +197,7 @@ def cmd_log(args):
         print(f"loppy log: {logf} not found", file=sys.stderr)
         sys.exit(1)
     today = os.environ.get("LOPPY_TODAY", date.today().isoformat())
-    body = sys.stdin.read().rstrip("\n")
+    body = sys.stdin.buffer.read().decode("utf-8").rstrip("\n")
 
     lines = logf.read_text(encoding="utf-8").splitlines()
 

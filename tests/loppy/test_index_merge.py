@@ -86,3 +86,18 @@ def test_index_merge_invalid_json_exits_nonzero(loppy_env):
     (wiki / "index.md").write_bytes((FIXTURE_DIR / "empty-before.md").read_bytes())
     result = run_loppy("index-merge", env=env, stdin="not json")
     assert result.returncode != 0
+
+
+def test_index_merge_non_ascii_utf8_summary(loppy_env):
+    """Summaries with non-ASCII characters (e.g. CJK) must survive the stdin decode."""
+    env, vault = loppy_env
+    env["LOPPY_TODAY"] = "2026-04-17"
+    wiki = vault / "wiki"
+    (wiki / "concepts").mkdir()
+    (wiki / "concepts" / "cjk.md").write_text("", encoding="utf-8")
+    (wiki / "index.md").write_bytes((FIXTURE_DIR / "empty-before.md").read_bytes())
+    payload = json.dumps([{"path": "wiki/concepts/cjk.md", "summary": "台灣硬體工作坊"}])
+    result = run_loppy("index-merge", env=env, stdin=payload)
+    assert result.returncode == 0
+    content = (wiki / "index.md").read_text(encoding="utf-8")
+    assert "台灣硬體工作坊" in content

@@ -15,6 +15,7 @@ def run_loppy(*args, env, stdin=None):
         [sys.executable, str(LOPPY_BIN), *args],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         input=stdin,
         env=env,
     )

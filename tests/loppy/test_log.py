@@ -109,3 +109,16 @@ def test_log_fails_when_log_md_missing(loppy_env):
     result = run_loppy("log", "ingest", "missing", env=env, stdin="x")
     assert result.returncode != 0
     assert "not found" in result.stderr
+
+
+def test_log_non_ascii_utf8_body(loppy_env):
+    """Body text with non-ASCII characters (e.g. CJK) must survive the stdin decode."""
+    env, vault = loppy_env
+    env["LOPPY_TODAY"] = "2026-04-17"
+    log = vault / "wiki" / "log.md"
+    with open(log, "w", encoding="utf-8", newline="\n") as f:
+        f.write(LOG_INITIAL)
+    result = run_loppy("log", "ingest", "cjk-test", env=env, stdin="深圳硬體工作坊")
+    assert result.returncode == 0
+    content = log.read_text(encoding="utf-8")
+    assert "深圳硬體工作坊" in content
